@@ -48,3 +48,6 @@ backend/problem_files/
 # Encryption key (auto-generated, DO NOT commit)
 data/.encryption_key
 *.png
+
+MathModel-Skill-master
+contest_question
