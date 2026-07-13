@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "playwright-mcp",
+      "args": [
+        "--headless",
+        "--browser", "chromium",
+        "--output-dir", "F:/code/MyPython/AI-Tutoring-Platform/test-results/playwright-mcp"
+      ]
+    }
+  }
+}

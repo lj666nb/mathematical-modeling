@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" fill="none">
+  <!-- 白色登录页顶部主视觉预览 -->
+  <rect width="480" height="320" rx="10" fill="white"/>
+  <rect width="480" height="140" fill="url(#lg)"/>
+  <defs><linearGradient id="lg" x1="0" y1="0" x2="480" y2="140"><stop offset="0%" stop-color="#F5F8FF"/><stop offset="100%" stop-color="#EEF2FF"/></linearGradient></defs>
+
+  <!-- ===== 主LOGO ===== -->
+  <g transform="translate(66, 38)">
+    <!-- 外框 -->
+    <rect x="-26" y="-26" width="52" height="52" rx="8" stroke="#165DFF" stroke-width="0.7" fill="none" opacity="0.12"/>
+
+    <!-- 左大括号 -->
+    <path d="M-10 -15 Q-15 -15 -15 -7.5 Q-15 0 -18 0 Q-15 0 -15 7.5 Q-15 15 -10 15"
+          stroke="#222" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+    <!-- 右大括号 -->
+    <path d="M10 -15 Q15 -15 15 -7.5 Q15 0 18 0 Q15 0 15 7.5 Q15 15 10 15"
+          stroke="#222" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+
+    <!-- 菱形API -->
+    <path d="M0 -4 L4 0 L0 4 L-4 0 Z" stroke="#165DFF" stroke-width="0.7" fill="none"/>
+    <circle cx="0" cy="0" r="1.2" fill="#165DFF"/>
+
+    <!-- 3条汇聚线 -->
+    <path d="M-12 -8 C-8 -6 -4 -3 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <path d="M12 -8 C8 -6 4 -3 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <path d="M-6 13 C-3 9 -1 5 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <path d="M6 13 C3 9 1 5 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.3" stroke-linecap="round"/>
+
+    <!-- 自适应曲线 -->
+    <path d="M-15 15 Q-7 18 0 13 Q7 8 15 11"
+          stroke="#165DFF" stroke-width="0.5" fill="none" opacity="0.3" stroke-linecap="round"/>
+  </g>
+
+  <!-- 平台名称 -->
+  <text x="140" y="48" font-family="'Helvetica Neue','PingFang SC',sans-serif" font-size="18" font-weight="700" fill="#222" letter-spacing="0.8">AI计科智能实训平台</text>
+  <text x="140" y="66" font-family="'Helvetica Neue',sans-serif" font-size="9" fill="#86909C" letter-spacing="0.3">多智能体计算机学科交叉实训系统</text>
+
+  <!-- 学科标签 -->
+  <g transform="translate(140, 78)">
+    <text x="0" y="10" font-family="sans-serif" font-size="7" fill="#165DFF" opacity="0.4">数据结构</text>
+    <text x="48" y="10" font-family="sans-serif" font-size="7" fill="#00B42A" opacity="0.4">操作系统</text>
+    <text x="96" y="10" font-family="sans-serif" font-size="7" fill="#FF7D00" opacity="0.4">编译原理</text>
+    <text x="144" y="10" font-family="sans-serif" font-size="7" fill="#165DFF" opacity="0.4">程序设计</text>
+  </g>
+
+  <!-- 登录卡片 -->
+  <rect x="120" y="110" width="240" height="185" rx="10" fill="white" stroke="#E5E6EB" stroke-width="0.5" filter="drop-shadow(0 4px 24px rgba(0,0,0,0.04))"/>
+
+  <text x="240" y="142" font-family="sans-serif" font-size="15" font-weight="700" fill="#222" text-anchor="middle">用户登录</text>
+
+  <!-- 表单 -->
+  <rect x="140" y="160" width="200" height="34" rx="6" fill="#F7F8FA" stroke="#E5E6EB" stroke-width="0.5"/>
+  <text x="150" y="181" font-family="sans-serif" font-size="10" fill="#86909C">用户名</text>
+
+  <rect x="140" y="204" width="200" height="34" rx="6" fill="#F7F8FA" stroke="#E5E6EB" stroke-width="0.5"/>
+  <text x="150" y="225" font-family="sans-serif" font-size="10" fill="#86909C">密码</text>
+
+  <rect x="140" y="250" width="200" height="36" rx="8" fill="#165DFF"/>
+  <text x="240" y="273" font-family="sans-serif" font-size="13" font-weight="600" fill="white" text-anchor="middle">登 录</text>
+
+  <text x="240" y="290" font-family="sans-serif" font-size="10" fill="#86909C" text-anchor="middle">还没有账号？<tspan fill="#165DFF">立即注册</tspan></text>
+
+  <!-- 底部 -->
+  <text x="240" y="315" font-family="sans-serif" font-size="6" fill="#C5C9D1" text-anchor="middle" letter-spacing="0.5">全球校园人工智能算法精英大赛 · AI+学科交叉赛道参赛作品</text>
+</svg>

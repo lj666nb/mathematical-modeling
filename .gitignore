@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Test outputs
+test-results/
+playwright-report/
+playwright/
+*.trx
+*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# MathModel Skill outputs
+paper_output/
+
+# Runtime data (Docker volumes mount here)
+backend/data/
+backend/paper_output/
+backend/problem_files/
+*.db
+*.db-journal
+
+# Encryption key (auto-generated, DO NOT commit)
+data/.encryption_key
+*.png

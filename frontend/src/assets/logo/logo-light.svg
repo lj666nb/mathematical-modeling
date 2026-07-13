@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 120" fill="none">
+  <!-- ============================================================
+       浅色版主徽章 - AI计科智能实训平台
+       三层极简结构：外框 / 代码大括号+API菱形枢纽+三条Agent流线 / 自适应曲线
+       配色：科技蓝#165DFF / 深炭灰#222222
+       ============================================================ -->
+
+  <!-- 徽章图形 (64×64区域，左侧) -->
+  <g transform="translate(32, 28)">
+    <!-- 第1层：极简圆角方形描边外框 -->
+    <rect x="-32" y="-32" width="64" height="64" rx="10" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.15"/>
+
+    <!-- 第2层：代码大括号 + 中心枢纽（核心视觉） -->
+    <g transform="translate(0, 0)">
+      <!-- 左大括号 -->
+      <path d="M-14 -18 Q-20 -18 -20 -9 Q-20 0 -24 0 Q-20 0 -20 9 Q-20 18 -14 18"
+            stroke="#222222" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+
+      <!-- 右大括号 -->
+      <path d="M14 -18 Q20 -18 20 -9 Q20 0 24 0 Q20 0 20 9 Q20 18 14 18"
+            stroke="#222222" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+
+      <!-- 中心菱形API密钥节点 -->
+      <path d="M0 -5 L5 0 L0 5 L-5 0 Z" stroke="#165DFF" stroke-width="0.9" fill="none"/>
+      <circle cx="0" cy="0" r="1.5" fill="#165DFF"/>
+
+      <!-- 3条数据流曲线（三大AI智能体）从左/右/下汇聚到菱形 -->
+      <!-- Agent 1: 代码纠错（左上→中心） -->
+      <path d="M-17 -10 C-12 -8 -6 -4 0 0" stroke="#165DFF" stroke-width="0.9" fill="none" opacity="0.6" stroke-linecap="round"/>
+      <!-- Agent 2: 实训引导（右上→中心） -->
+      <path d="M17 -10 C12 -8 6 -4 0 0" stroke="#165DFF" stroke-width="0.9" fill="none" opacity="0.6" stroke-linecap="round"/>
+      <!-- Agent 3: 专业课答疑（下方→中心） -->
+      <path d="M-8 16 C-4 10 0 5 0 0" stroke="#165DFF" stroke-width="0.9" fill="none" opacity="0.6" stroke-linecap="round"/>
+      <path d="M8 16 C4 10 0 5 0 0" stroke="#165DFF" stroke-width="0.9" fill="none" opacity="0.4" stroke-linecap="round"/>
+    </g>
+
+    <!-- 第3层：平缓上扬曲线（自适应学习路径） -->
+    <path d="M-20 18 Q-10 22 0 16 Q10 10 20 14"
+          stroke="#165DFF" stroke-width="0.7" fill="none" opacity="0.35" stroke-linecap="round"/>
+  </g>
+
+  <!-- 右侧文字 -->
+  <g transform="translate(80, 0)">
+    <text x="0" y="48" font-family="'Helvetica Neue','PingFang SC','Microsoft YaHei',sans-serif"
+          font-size="20" font-weight="700" fill="#222222" letter-spacing="1">AI计科智能实训平台</text>
+    <text x="0" y="70" font-family="'Helvetica Neue','PingFang SC','Microsoft YaHei',sans-serif"
+          font-size="10" fill="#86909C" letter-spacing="0.5" font-weight="400">多智能体计算机学科交叉实训系统</text>
+    <text x="0" y="86" font-family="'Helvetica Neue','PingFang SC',sans-serif"
+          font-size="8" fill="#86909C" letter-spacing="0.3" font-weight="300" opacity="0.6">全球校园AI算法精英大赛 · 参赛作品</text>
+
+    <!-- 底部四个学科轻量标签 -->
+    <g transform="translate(0, 98)">
+      <text x="0" y="10" font-family="'Helvetica Neue',sans-serif" font-size="7" fill="#165DFF" opacity="0.5" font-weight="500">数据结构</text>
+      <text x="52" y="10" font-family="'Helvetica Neue',sans-serif" font-size="7" fill="#00B42A" opacity="0.5" font-weight="500">操作系统</text>
+      <text x="104" y="10" font-family="'Helvetica Neue',sans-serif" font-size="7" fill="#FF7D00" opacity="0.5" font-weight="500">编译原理</text>
+      <text x="156" y="10" font-family="'Helvetica Neue',sans-serif" font-size="7" fill="#165DFF" opacity="0.5" font-weight="500">程序设计</text>
+    </g>
+  </g>
+</svg>

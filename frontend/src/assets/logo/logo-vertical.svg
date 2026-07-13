@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" fill="none">
+  <!-- 竖版主徽章（文档页眉/封面用） -->
+
+  <!-- 徽章图形 -->
+  <g transform="translate(50, 42)">
+    <rect x="-30" y="-30" width="60" height="60" rx="9" stroke="#165DFF" stroke-width="0.7" fill="none" opacity="0.12"/>
+
+    <!-- 代码大括号 -->
+    <path d="M-12 -17 Q-18 -17 -18 -8.5 Q-18 0 -22 0 Q-18 0 -18 8.5 Q-18 17 -12 17"
+          stroke="#222222" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M12 -17 Q18 -17 18 -8.5 Q18 0 22 0 Q18 0 18 8.5 Q18 17 12 17"
+          stroke="#222222" stroke-width="1" fill="none" stroke-linecap="round"/>
+
+    <!-- 菱形API节点 -->
+    <path d="M0 -4.5 L4.5 0 L0 4.5 L-4.5 0 Z" stroke="#165DFF" stroke-width="0.8" fill="none"/>
+    <circle cx="0" cy="0" r="1.3" fill="#165DFF"/>
+
+    <!-- 3条数据流曲线 -->
+    <path d="M-15 -9 C-10 -7 -5 -4 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <path d="M15 -9 C10 -7 5 -4 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <path d="M-7 15 C-4 10 -1 5 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <path d="M7 15 C4 10 1 5 0 0" stroke="#165DFF" stroke-width="0.8" fill="none" opacity="0.3" stroke-linecap="round"/>
+
+    <!-- 自适应曲线 -->
+    <path d="M-18 17 Q-8 21 0 15 Q8 9 18 13"
+          stroke="#165DFF" stroke-width="0.6" fill="none" opacity="0.3" stroke-linecap="round"/>
+  </g>
+
+  <!-- 竖排文字 -->
+  <text x="50" y="88" font-family="'Helvetica Neue','PingFang SC',sans-serif"
+        font-size="15" font-weight="700" fill="#222" text-anchor="middle" letter-spacing="1.2">AI计科</text>
+  <text x="50" y="108" font-family="'Helvetica Neue','PingFang SC',sans-serif"
+        font-size="15" font-weight="700" fill="#222" text-anchor="middle" letter-spacing="1.2">智能实训平台</text>
+  <text x="50" y="130" font-family="'Helvetica Neue',sans-serif"
+        font-size="7" fill="#86909C" text-anchor="middle" letter-spacing="0.5" opacity="0.6">多智能体计算机学科交叉实训系统</text>
+  <text x="50" y="144" font-family="'Helvetica Neue',sans-serif"
+        font-size="6" fill="#86909C" text-anchor="middle" letter-spacing="0.3" opacity="0.4">全球校园AI算法精英大赛</text>
+</svg>

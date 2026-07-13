@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- ============================================================
+       24px极简侧边栏图标
+       保留：代码大括号 + 中心菱形API节点 + 3条汇聚流线
+       剔除：外框、自适应曲线、所有冗余
+       ============================================================ -->
+
+  <!-- 左大括号 -->
+  <path d="M5 4 C3 4 3 7 3 9 C3 11 2 12 2 12 C2 12 3 13 3 15 C3 17 3 20 5 20"
+        stroke="currentColor" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+
+  <!-- 右大括号 -->
+  <path d="M19 4 C21 4 21 7 21 9 C21 11 22 12 22 12 C22 12 21 13 21 15 C21 17 21 20 19 20"
+        stroke="currentColor" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+
+  <!-- 菱形API密钥节点 -->
+  <path d="M12 8 L15 12 L12 16 L9 12 Z" stroke="currentColor" stroke-width="0.7" fill="none" opacity="0.9"/>
+  <circle cx="12" cy="12" r="1.5" fill="currentColor" opacity="0.7"/>
+
+  <!-- 3条汇聚线（三大Agent） -->
+  <path d="M7 6 C9 8 10 10 12 12" stroke="currentColor" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+  <path d="M17 6 C15 8 14 10 12 12" stroke="currentColor" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+  <path d="M9 18 C10 16 11 14 12 12" stroke="currentColor" stroke-width="0.8" fill="none" opacity="0.5" stroke-linecap="round"/>
+  <path d="M15 18 C14 16 13 14 12 12" stroke="currentColor" stroke-width="0.8" fill="none" opacity="0.3" stroke-linecap="round"/>
+</svg>

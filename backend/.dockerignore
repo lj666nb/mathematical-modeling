@@ -1,0 +1,43 @@
+# ============================================================
+# 后端 .dockerignore - 排除不需要打包到镜像中的文件
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 数据（运行时挂载，不打包进镜像）
+data/
+*.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# 文档
+*.md

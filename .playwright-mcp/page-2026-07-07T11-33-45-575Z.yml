@@ -1,0 +1,389 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - heading "全球校园人工智能算法精英大赛" [level=1] [ref=e4]:
+      - link "全球校园人工智能算法精英大赛" [ref=e5] [cursor=pointer]:
+        - /url: https://www.aicomp.cn/
+    - list [ref=e7]:
+      - listitem [ref=e8]:
+        - link "首页" [ref=e9] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/
+      - listitem [ref=e10]:
+        - link "关于大赛" [ref=e11] [cursor=pointer]:
+          - /url: "#1"
+        - generic:
+          - list:
+            - listitem:
+              - link "大赛概况":
+                - /url: https://www.aicomp.cn/about
+            - listitem:
+              - link "竞赛章程":
+                - /url: https://www.aicomp.cn/bylaws
+            - listitem:
+              - link "组委会联系":
+                - /url: https://www.aicomp.cn/contact
+      - listitem [ref=e12]:
+        - link "通知公告" [ref=e13] [cursor=pointer]:
+          - /url: "#1"
+        - generic:
+          - list:
+            - listitem:
+              - link "国赛通知":
+                - /url: https://www.aicomp.cn/notice/notice-1
+            - listitem:
+              - link "赛区通知":
+                - /url: https://www.aicomp.cn/notice/notice-2
+            - listitem:
+              - link "赛题通知":
+                - /url: https://www.aicomp.cn/notice/notice-3
+            - listitem:
+              - link "获奖公示":
+                - /url: https://www.aicomp.cn/notice/notice-4
+            - listitem:
+              - link "合作邀请":
+                - /url: https://www.aicomp.cn/notice/notice-5
+      - listitem [ref=e14]:
+        - link "赛事新闻" [ref=e15] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/news
+      - listitem [ref=e16]:
+        - link "赛题规则" [ref=e17] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/tracks/tracks-1
+      - listitem [ref=e18]:
+        - link "赛区一览" [ref=e19] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/zone
+      - listitem [ref=e20]:
+        - link "证书查询" [ref=e21] [cursor=pointer]:
+          - /url: https://certifacate.aicomp.cn/
+      - listitem [ref=e22]:
+        - link "排行榜" [ref=e23] [cursor=pointer]:
+          - /url: https://reg.aicomp.cn/special/phb/list
+      - listitem [ref=e24]:
+        - link "参赛指南" [ref=e25] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/download
+        - generic:
+          - list:
+            - listitem:
+              - link "参赛流程":
+                - /url: https://www.aicomp.cn/process
+      - listitem [ref=e26]:
+        - link "好前程" [ref=e27] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/%e5%a5%bd%e5%89%8d%e7%a8%8b/4025.html
+    - list [ref=e28]:
+      - listitem [ref=e29]:
+        - link "大赛报名" [ref=e30] [cursor=pointer]:
+          - /url: https://reg.aicomp.cn
+      - listitem [ref=e31]:
+        - link "" [ref=e32] [cursor=pointer]:
+          - /url: javascript:void(0);
+          - generic [ref=e33]: 
+        - generic:
+          - generic:
+            - search:
+              - generic: 
+              - searchbox "搜索…"
+              - button ""
+              - link "":
+                - /url: "#1"
+                - generic: 
+  - generic:
+    - generic:
+      - list [ref=e35]:
+        - listitem [ref=e36]:
+          - link "首页" [ref=e37] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/
+        - listitem [ref=e38]:
+          - link "关于大赛 " [ref=e39] [cursor=pointer]:
+            - /url: "#1"
+          - list:
+            - listitem:
+              - link "大赛概况 ":
+                - /url: https://www.aicomp.cn/about
+            - listitem:
+              - link "竞赛章程 ":
+                - /url: https://www.aicomp.cn/bylaws
+            - listitem:
+              - link "组委会联系 ":
+                - /url: https://www.aicomp.cn/contact
+        - listitem [ref=e40]:
+          - link "通知公告 " [ref=e41] [cursor=pointer]:
+            - /url: "#1"
+          - list:
+            - listitem:
+              - link "国赛通知 ":
+                - /url: https://www.aicomp.cn/notice/notice-1
+            - listitem:
+              - link "赛区通知 ":
+                - /url: https://www.aicomp.cn/notice/notice-2
+            - listitem:
+              - link "赛题通知 ":
+                - /url: https://www.aicomp.cn/notice/notice-3
+            - listitem:
+              - link "获奖公示 ":
+                - /url: https://www.aicomp.cn/notice/notice-4
+            - listitem:
+              - link "合作邀请 ":
+                - /url: https://www.aicomp.cn/notice/notice-5
+        - listitem [ref=e42]:
+          - link "赛事新闻" [ref=e43] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/news
+        - listitem [ref=e44]:
+          - link "赛题规则" [ref=e45] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/tracks/tracks-1
+        - listitem [ref=e46]:
+          - link "赛区一览" [ref=e47] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/zone
+        - listitem [ref=e48]:
+          - link "证书查询" [ref=e49] [cursor=pointer]:
+            - /url: https://certifacate.aicomp.cn/
+        - listitem [ref=e50]:
+          - link "排行榜" [ref=e51] [cursor=pointer]:
+            - /url: https://reg.aicomp.cn/special/phb/list
+        - listitem [ref=e52]:
+          - link "参赛指南 " [ref=e53] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/download
+          - list:
+            - listitem:
+              - link "参赛流程 ":
+                - /url: https://www.aicomp.cn/process
+        - listitem [ref=e54]:
+          - link "好前程" [ref=e55] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/%e5%a5%bd%e5%89%8d%e7%a8%8b/4025.html
+      - search [ref=e56]:
+        - searchbox "搜索…" [ref=e57]
+        - button "搜索" [ref=e58] [cursor=pointer]
+  - generic [ref=e60]:
+    - list [ref=e62]:
+      - listitem [ref=e63]:
+        - text: 您的位置：
+        - link "首页" [ref=e64] [cursor=pointer]:
+          - /url: https://www.aicomp.cn
+      - listitem [ref=e65]:
+        - text: ">"
+        - link "赛道赛题" [ref=e66] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/tracks
+        - text: ">"
+        - link "算法创新赛" [ref=e67] [cursor=pointer]:
+          - /url: https://www.aicomp.cn/tracks/tracks-2
+        - text: "> AI+学科交叉"
+    - generic [ref=e68]:
+      - generic [ref=e69]:
+        - generic [ref=e70]: AI+学科交叉
+        - generic [ref=e71]:
+          - generic [ref=e72]: 全智赛组委会编辑
+          - generic [ref=e73]: 2026-05-06
+          - generic [ref=e74]: 2,656 次阅读
+      - generic [ref=e75]:
+        - heading [level=6] [ref=e76]
+        - heading "一、赛题说明" [level=6] [ref=e77]
+        - paragraph [ref=e78]: 聚焦“人工智能+学科交叉”的深度融合创新，鼓励参赛团队立足某一具体学科专业（涵盖理、工、农、医、文、法、经、管等全学科领域），运用人工智能技术或产品赋能学科的理论研究、科研探索、教学实践、实验实训、自主学习等核心环节。通过竞赛推动人工智能技术与学科特色的深度适配，探索学科发展新方法、挖掘学科领域新知识、培育专业应用新技能。
+        - heading "二、作品范围参考" [level=6] [ref=e79]
+        - paragraph [ref=e80]: 包括但不限于：理科数据分析与建模、工科仿真设计智能辅助、医科临床技能训练、文科文献挖掘与分析、教育个性化教学推荐、学科实验实训智能指导、科研数据处理与可视化等适配具体学科发展的AI赋能新思路、新路径、软硬件产品和解决方案。
+        - heading "三、作品要求" [level=6] [ref=e81]
+        - paragraph [ref=e82]:
+          - text: 1. 参赛作品需明确聚焦某一具体学科专业（需在方案中清晰界定学科领域及应用场景），围绕该学科的理论研究、教学、实验、科研或学习等至少一个核心环节展开，体现人工智能技术的赋能价值。
+          - text: 2. 作品形式不限（可包括技术方案、软件工具、教学系统、实验平台、科研辅助工具等），需深度融合人工智能技术与学科专业需求，避免技术与学科场景脱节。
+          - text: 3. 提交材料需包含完整的技术方案，包括学科需求分析报告、AI技术应用方案、作品功能说明、效果验证依据（如教学试点数据、科研效率提升证明、用户反馈等），跨专业组队需说明成员分工与协作机制。
+          - text: 4. 需突出作品的创新点，包括但不限于学科问题解决新方法、教学科研新模式、技术应用新场景等，对比传统学科建设方式的优势。
+          - text: 5. 作品需具备可行性与推广价值，需说明在同类学科或院校的复用条件、实施成本及落地路径，鼓励提供小规模试点应用案例。
+          - text: 6. 作品需符合相关学科规范与教育行业标准，无知识产权争议，涉及教学数据、科研成果的需提供合法授权说明，尊重学术伦理。
+        - heading "四、评分规则" [level=6] [ref=e83]
+        - paragraph [ref=e84]:
+          - strong [ref=e85]: AI+学科交叉-评分规则
+        - table [ref=e86]:
+          - rowgroup [ref=e87]:
+            - row "评分项目 评分标准 分值" [ref=e88]:
+              - cell "评分项目" [ref=e89]
+              - cell "评分标准" [ref=e90]
+              - cell "分值" [ref=e91]
+            - row "创新性（20分） 创新点突出，提出学科问题解决新方法、教学科研新模式或AI技术应用新场景，AI技术与学科特色深度适配，得14-20分； 有明确创新点，AI技术应用有一定新意，能够结合学科特点优化传统环节（如教学、科研、实验等），与同类作品相比有明显改进，得7-13分； 无明显创新点，AI技术应用常规或直接套用现有产品/方案，未结合具体学科特色适配，得0-6分。 20" [ref=e92]:
+              - cell "创新性（20分）" [ref=e93]
+              - cell "创新点突出，提出学科问题解决新方法、教学科研新模式或AI技术应用新场景，AI技术与学科特色深度适配，得14-20分； 有明确创新点，AI技术应用有一定新意，能够结合学科特点优化传统环节（如教学、科研、实验等），与同类作品相比有明显改进，得7-13分； 无明显创新点，AI技术应用常规或直接套用现有产品/方案，未结合具体学科特色适配，得0-6分。" [ref=e94]:
+                - text: 创新点突出，提出学科问题解决新方法、教学科研新模式或AI技术应用新场景，AI技术与学科特色深度适配，得14-20分；
+                - paragraph
+                - paragraph [ref=e95]:
+                  - generic [ref=e96]: 有明确创新点，AI技术应用有一定新意，能够结合学科特点优化传统环节（如教学、科研、实验等），与同类作品相比有明显改进，得7-13分；
+                - paragraph [ref=e97]:
+                  - generic [ref=e98]: 无明显创新点，AI技术应用常规或直接套用现有产品/方案，未结合具体学科特色适配，得0-6分。
+              - cell "20" [ref=e99]
+            - row "需求分析（15分） 明确界定具体学科专业及具体应用场景，全面分析学科核心环节的痛点、难点，贴合学科实际需求，得10-15分； 明确具体学科专业及应用场景，能够分析学科核心需求，痛点识别基本准确，需求与学科环节贴合度较好，得5-9分； 未明确具体学科领域，需求分析模糊，无法体现学科实际需求，得0-4分。 15" [ref=e100]:
+              - cell "需求分析（15分）" [ref=e101]
+              - cell "明确界定具体学科专业及具体应用场景，全面分析学科核心环节的痛点、难点，贴合学科实际需求，得10-15分； 明确具体学科专业及应用场景，能够分析学科核心需求，痛点识别基本准确，需求与学科环节贴合度较好，得5-9分； 未明确具体学科领域，需求分析模糊，无法体现学科实际需求，得0-4分。" [ref=e102]:
+                - text: 明确界定具体学科专业及具体应用场景，全面分析学科核心环节的痛点、难点，贴合学科实际需求，得10-15分；
+                - paragraph
+                - paragraph [ref=e103]:
+                  - generic [ref=e104]: 明确具体学科专业及应用场景，能够分析学科核心需求，痛点识别基本准确，需求与学科环节贴合度较好，得5-9分；
+                - paragraph [ref=e105]:
+                  - generic [ref=e106]: 未明确具体学科领域，需求分析模糊，无法体现学科实际需求，得0-4分。
+              - cell "15" [ref=e107]
+            - row "方案可行性（20分） AI技术选型合理，与学科需求高度适配，技术路线清晰、可行，推广价值高得14-20分； AI技术选型基本合理，贴合学科需求，有一定推广价值，得7-13分； AI技术选型与学科需求脱节，技术路线不可行，无法落地，无推广价值，得0-6分。 20" [ref=e108]:
+              - cell "方案可行性（20分）" [ref=e109]
+              - cell "AI技术选型合理，与学科需求高度适配，技术路线清晰、可行，推广价值高得14-20分； AI技术选型基本合理，贴合学科需求，有一定推广价值，得7-13分； AI技术选型与学科需求脱节，技术路线不可行，无法落地，无推广价值，得0-6分。" [ref=e110]:
+                - text: AI技术选型合理，与学科需求高度适配，技术路线清晰、可行，推广价值高得14-20分；
+                - paragraph
+                - paragraph [ref=e111]:
+                  - generic [ref=e112]: AI技术选型基本合理，贴合学科需求，有一定推广价值，得7-13分；
+                - paragraph [ref=e113]:
+                  - generic [ref=e114]: AI技术选型与学科需求脱节，技术路线不可行，无法落地，无推广价值，得0-6分。
+              - cell "20" [ref=e115]
+            - row "项目实施（20分） 实施计划详细，团队分工清晰，实施步骤可操作性强，得14-20分； 实施过程基本完成，团队分工基本清晰，但存在部分问题，得7-13分； 实施过程不完整，团队无明确分工，存在明显缺陷，得0-6分。 20" [ref=e116]:
+              - cell "项目实施（20分）" [ref=e117]
+              - cell "实施计划详细，团队分工清晰，实施步骤可操作性强，得14-20分； 实施过程基本完成，团队分工基本清晰，但存在部分问题，得7-13分； 实施过程不完整，团队无明确分工，存在明显缺陷，得0-6分。" [ref=e118]:
+                - text: 实施计划详细，团队分工清晰，实施步骤可操作性强，得14-20分；
+                - paragraph
+                - paragraph [ref=e119]:
+                  - generic [ref=e120]: 实施过程基本完成，团队分工基本清晰，但存在部分问题，得7-13分；
+                - paragraph [ref=e121]:
+                  - generic [ref=e122]: 实施过程不完整，团队无明确分工，存在明显缺陷，得0-6分。
+              - cell "20" [ref=e123]
+            - row "应用效果（20分） 有充分的效果验证依据（教学试点数据、科研效率证明等），数据真实有效，能明确体现AI赋能价值，对比传统方式有显著提升，得14-20分； 有一定的效果验证依据，数据基本真实，能体现AI赋能价值，对比传统方式有一定提升，得7-13分； 无任何效果验证依据，无法体现AI赋能价值，甚至未达到传统方式效果，得0-6分。 20" [ref=e124]:
+              - cell "应用效果（20分）" [ref=e125]
+              - cell "有充分的效果验证依据（教学试点数据、科研效率证明等），数据真实有效，能明确体现AI赋能价值，对比传统方式有显著提升，得14-20分； 有一定的效果验证依据，数据基本真实，能体现AI赋能价值，对比传统方式有一定提升，得7-13分； 无任何效果验证依据，无法体现AI赋能价值，甚至未达到传统方式效果，得0-6分。" [ref=e126]:
+                - text: 有充分的效果验证依据（教学试点数据、科研效率证明等），数据真实有效，能明确体现AI赋能价值，对比传统方式有显著提升，得14-20分；
+                - paragraph
+                - paragraph [ref=e127]:
+                  - generic [ref=e128]: 有一定的效果验证依据，数据基本真实，能体现AI赋能价值，对比传统方式有一定提升，得7-13分；
+                - paragraph [ref=e129]:
+                  - generic [ref=e130]: 无任何效果验证依据，无法体现AI赋能价值，甚至未达到传统方式效果，得0-6分。
+              - cell "20" [ref=e131]
+            - row "总结与展望（5分） 总结全面准确，展望合理且具有前瞻性，得3-5分； 总结展望较完整但深度不足，得1-2分； 内容简略、缺乏价值，得0分。 5" [ref=e132]:
+              - cell "总结与展望（5分）" [ref=e133]
+              - cell "总结全面准确，展望合理且具有前瞻性，得3-5分； 总结展望较完整但深度不足，得1-2分； 内容简略、缺乏价值，得0分。" [ref=e134]:
+                - text: 总结全面准确，展望合理且具有前瞻性，得3-5分；
+                - paragraph
+                - paragraph [ref=e135]:
+                  - generic [ref=e136]: 总结展望较完整但深度不足，得1-2分；
+                - paragraph [ref=e137]:
+                  - generic [ref=e138]: 内容简略、缺乏价值，得0分。
+              - cell "5" [ref=e139]
+        - heading "五、技术方案参考大纲" [level=6] [ref=e140]
+        - paragraph [ref=e141]:
+          - strong [ref=e142]: （一）项目概述
+          - text: 1. 背景与意义：结合具体行业痛点，阐述AI赋能的必要性，关联学科发展现状与行业需求。
+          - text: 2. 核心目标：明确AI技术赋能的具体目标（如提升教学效率、优化科研流程、完善实验实训等），贴合学科核心环节。
+        - paragraph [ref=e143]:
+          - strong [ref=e144]: （二）需求分析
+          - text: 1. 学科专业界定：明确具体学科领域、专业方向，说明学科核心环节（理论研究/教学/实验/科研/自主学习等）。
+          - text: 2. 核心痛点梳理：结合学科实际，详细分析当前建设中的痛点、难点（如科研数据处理繁琐、教学个性化不足等），提供调研数据或案例支撑。
+          - text: 3. AI赋能需求：明确AI技术需解决的具体问题，界定AI与学科融合的核心切入点，避免技术与场景脱节。
+        - paragraph [ref=e145]:
+          - strong [ref=e146]: （三）解决方案设计
+          - text: 1. 系统架构设计：绘制总体架构图，说明架构分层（如数据层、算法层、应用层、展示层）及各层核心功能。
+          - text: 2. 技术选型依据：结合学科需求，说明AI技术选型理由（如机器学习、深度学习、自然语言处理、计算机视觉等），体现与学科的适配性。
+          - text: 3. 核心技术模块：分模块介绍技术实现思路，明确各模块与学科需求的对应关系。
+        - paragraph [ref=e147]:
+          - strong [ref=e148]: （四）方案可行性
+          - text: 1. 技术可行性：说明现有技术成熟度、团队技术能力，确认方案可落地实施。
+          - text: 2. 经济可行性：分析实施成本、运维成本，说明成本可控性。
+          - text: 3. 推广价值：说明方案在同类学科、同类院校的复用条件、落地路径，提供小规模试点应用案例（如有）。
+        - paragraph [ref=e149]:
+          - strong [ref=e150]: （五）项目实施
+          - text: 1. 实施计划：制定详细的项目实施计划，明确各阶段具体安排。
+          - text: 2. 资源保障：介绍项目技术资源（硬件、软件）、资金预算等，说明资源配置的合理性。
+          - text: 3. 团队协作：介绍项目团队成员的专业背景与分工，说明团队的协作机制，确保项目顺利推进。
+        - paragraph [ref=e151]:
+          - strong [ref=e152]: （六）应用效果
+          - text: 1. 应用效果预期：明确AI赋能的具体效果（如教学效率提升、科研流程优化、实验实训质量改善等），结合学科场景给出明确方向。
+          - text: 2. 成果展示：展示项目取得的成果，量化体现“AI+学科交叉”融合应用的价值，突出方案的实用性与推广性。
+        - paragraph [ref=e153]:
+          - strong [ref=e154]: （七）总结与展望
+          - text: 1. 方案总结：梳理方案核心亮点、创新点，客观说明存在的不足。
+          - text: 2. 未来展望：结合学科发展趋势与AI技术迭代方向，提出方案优化升级计划、长远推广规划。
+        - paragraph [ref=e155]:
+          - strong [ref=e156]: （八）附录
+          - text: 1. 代码与模型：附上关键算法代码、模型文件及相关说明文档，展示技术实现的细节与可复现性。
+          - text: 2. 参考文献：列出研发过程中参考的技术文档、学术论文、专利文献等资料，注明出处。
+          - text: 3. 其他材料：如有专利证书、检测报告、项目合同等材料，一律放入佐证材料中进行上传。
+  - generic [ref=e158]:
+    - generic [ref=e159]:
+      - generic [ref=e160]:
+        - heading "全球校园人工智能算法精英大赛" [level=3] [ref=e161]:
+          - link "全球校园人工智能算法精英大赛" [ref=e162] [cursor=pointer]:
+            - /url: https://www.aicomp.cn/
+            - img [ref=e163]
+            - text: 全球校园人工智能算法精英大赛
+        - generic [ref=e164]:
+          - definition [ref=e165]: "电话: 025-85778806"
+          - definition [ref=e166]: "邮箱: office@aicomp.cn"
+          - definition [ref=e167]: "地址: 南京大学(鼓楼校区)费彝民楼B座1013室"
+          - definition [ref=e168]: "邮编: 210000"
+        - generic [ref=e169]:
+          - term [ref=e170]: 友情链接：
+          - definition [ref=e171]:
+            - link "中华人民共和国教育部" [ref=e172] [cursor=pointer]:
+              - /url: https://www.moe.gov.cn/
+          - definition [ref=e173]:
+            - link "中国高等教育学会" [ref=e174] [cursor=pointer]:
+              - /url: https://www.cahe.edu.cn/
+      - generic [ref=e175]:
+        - generic [ref=e177]:
+          - term [ref=e178]: 关于大赛
+          - definition [ref=e179]:
+            - link "大赛介绍" [ref=e180] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/about
+          - definition [ref=e181]:
+            - link "参赛流程" [ref=e182] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/process
+          - definition [ref=e183]:
+            - link "大赛章程" [ref=e184] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/bylaws
+          - definition [ref=e185]:
+            - link "历届专家" [ref=e186] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/expert
+          - definition [ref=e187]:
+            - link "联系方式" [ref=e188] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/contact
+        - generic [ref=e190]:
+          - term [ref=e191]: 通知公告
+          - definition [ref=e192]:
+            - link "国赛组委会通知" [ref=e193] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/notice/notice-1
+          - definition [ref=e194]:
+            - link "赛区通知" [ref=e195] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/notice/notice-2
+          - definition [ref=e196]:
+            - link "获奖公示" [ref=e197] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/notice/notice-3
+          - definition [ref=e198]:
+            - link "支持合作" [ref=e199] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/notice/notice-4
+        - generic [ref=e200]:
+          - term [ref=e202]:
+            - link "赛事新闻" [ref=e203] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/news
+          - term [ref=e205]:
+            - link "赛事赛区" [ref=e206] [cursor=pointer]:
+              - /url: https://www.aicomp.cn/zone
+        - generic [ref=e208]:
+          - term [ref=e209]: 大赛相关
+          - definition [ref=e210]:
+            - link "大赛报名" [ref=e211] [cursor=pointer]:
+              - /url: https://reg.aicomp.cn
+          - definition [ref=e212]:
+            - link "赛事社区" [ref=e213] [cursor=pointer]:
+              - /url: "#1"
+          - definition [ref=e214]:
+            - link "参赛查询" [ref=e215] [cursor=pointer]:
+              - /url: "#1"
+          - definition [ref=e216]:
+            - link "证书查询" [ref=e217] [cursor=pointer]:
+              - /url: "#1"
+        - generic [ref=e218]:
+          - generic [ref=e219]:
+            - img [ref=e220]
+            - text: 2025精彩瞬间
+          - generic [ref=e221]:
+            - img [ref=e222]
+            - text: 大赛回顾
+          - generic [ref=e223]:
+            - img [ref=e224]
+            - text: 关注我们
+    - generic [ref=e225]:
+      - generic [ref=e227]: CopyRight © 2025 aicomp.cn All Right Reservide.
+      - generic [ref=e228]:
+        - paragraph [ref=e229]:
+          - text: 版权所有 © 全球校园人工智能算法精英大赛组委会
+          - link "苏ICP备20008440号-9" [ref=e230] [cursor=pointer]:
+            - /url: https://beian.miit.gov.cn/
+        - paragraph [ref=e231]:
+          - text: 技术支持：
+          - link "优易迪" [ref=e232] [cursor=pointer]:
+            - /url: https://njued.com

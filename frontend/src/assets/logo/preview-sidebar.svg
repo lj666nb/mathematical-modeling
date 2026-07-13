@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 深色后台侧边栏实景预览 -->
+  <rect width="400" height="300" rx="8" fill="#F2F3F8"/>
+
+  <!-- 侧边栏 -->
+  <rect x="0" y="0" width="140" height="300" fill="#1D2939" rx="8"/>
+
+  <!-- 品牌区：LOGO + 文字 -->
+  <!-- 左大括号 -->
+  <path d="M18 20 C15 20 15 23 15 25 C15 27 14 28 14 28 C14 28 15 29 15 31 C15 33 15 36 18 36"
+        stroke="rgba(255,255,255,0.7)" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <!-- 右大括号 -->
+  <path d="M32 20 C35 20 35 23 35 25 C35 27 36 28 36 28 C36 28 35 29 35 31 C35 33 35 36 32 36"
+        stroke="rgba(255,255,255,0.7)" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <!-- 菱形节点 -->
+  <path d="M25 24 L28 28 L25 32 L22 28 Z" stroke="#69B1FF" stroke-width="0.6" fill="none"/>
+  <circle cx="25" cy="28" r="1.2" fill="#69B1FF" opacity="0.8"/>
+  <!-- 汇聚线 -->
+  <path d="M20 22 C22 24 23 26 25 28" stroke="#69B1FF" stroke-width="0.7" fill="none" opacity="0.4" stroke-linecap="round"/>
+  <path d="M30 22 C28 24 27 26 25 28" stroke="#69B1FF" stroke-width="0.7" fill="none" opacity="0.4" stroke-linecap="round"/>
+
+  <text x="44" y="26" font-family="sans-serif" font-size="9" font-weight="700" fill="white" letter-spacing="0.3">AI计科智能实训平台</text>
+  <text x="44" y="36" font-family="sans-serif" font-size="6" fill="rgba(255,255,255,0.2)" letter-spacing="0.2">多智能体计算机学科交叉实训系统</text>
+
+  <line x1="10" y1="46" x2="130" y2="46" stroke="rgba(255,255,255,0.05)"/>
+
+  <!-- 菜单 -->
+  <text x="14" y="60" font-family="sans-serif" font-size="6" fill="rgba(255,255,255,0.12)" letter-spacing="0.8">数据总览</text>
+
+  <!-- 个人看板（选中） -->
+  <rect x="6" y="66" width="128" height="26" rx="5" fill="rgba(22,93,255,0.12)"/>
+  <rect x="6" y="72" width="3" height="13" rx="1.5" fill="#69B1FF"/>
+  <text x="22" y="83" font-family="sans-serif" font-size="10" font-weight="500" fill="white">个人看板</text>
+
+  <text x="14" y="106" font-family="sans-serif" font-size="6" fill="rgba(255,255,255,0.12)" letter-spacing="0.8">实训核心工具</text>
+  <text x="22" y="124" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">API配置</text>
+  <text x="22" y="144" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">实验题库</text>
+  <text x="22" y="164" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">在线编程</text>
+  <text x="22" y="184" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">AI智能体</text>
+
+  <line x1="10" y1="196" x2="130" y2="196" stroke="rgba(255,255,255,0.05)"/>
+
+  <!-- 拓展工具 -->
+  <text x="14" y="210" font-family="sans-serif" font-size="6" fill="rgba(255,255,255,0.12)" letter-spacing="0.8">实训辅助工具</text>
+  <text x="22" y="226" font-family="sans-serif" font-size="9" fill="rgba(255,255,255,0.2)">实训报告生成</text>
+  <text x="22" y="242" font-family="sans-serif" font-size="9" fill="rgba(255,255,255,0.2)">知识点思维导图</text>
+
+  <!-- 底部用户 -->
+  <line x1="10" y1="250" x2="130" y2="250" stroke="rgba(255,255,255,0.05)"/>
+  <circle cx="22" cy="268" r="8" fill="rgba(105,177,255,0.25)"/>
+  <text x="22" y="271" font-family="sans-serif" font-size="7" font-weight="700" fill="white" text-anchor="middle">李</text>
+  <text x="36" y="266" font-family="sans-serif" font-size="9" font-weight="600" fill="rgba(255,255,255,0.6)">李同学</text>
+  <text x="36" y="276" font-family="sans-serif" font-size="6" fill="rgba(255,255,255,0.2)">计科专业-学生</text>
+  <text x="118" y="275" font-family="sans-serif" font-size="6" fill="rgba(255,255,255,0.15)">退出</text>
+  <text x="70" y="295" font-family="sans-serif" font-size="5" fill="rgba(255,255,255,0.08)" text-anchor="middle">国赛参赛作品 V1.0</text>
+
+  <!-- 内容区占位 -->
+  <rect x="155" y="12" width="230" height="14" rx="4" fill="#E5E6EB" opacity="0.4"/>
+  <!-- 统计卡片缩略 -->
+  <rect x="155" y="38" width="50" height="60" rx="6" fill="white" stroke="#E5E6EB" stroke-width="0.3"/>
+  <rect x="155" y="38" width="50" height="2.5" rx="1" fill="#165DFF"/>
+  <rect x="210" y="38" width="50" height="60" rx="6" fill="white" stroke="#E5E6EB" stroke-width="0.3"/>
+  <rect x="210" y="38" width="50" height="2.5" rx="1" fill="#00B42A"/>
+  <rect x="265" y="38" width="50" height="60" rx="6" fill="white" stroke="#E5E6EB" stroke-width="0.3"/>
+  <rect x="265" y="38" width="50" height="2.5" rx="1" fill="#FF7D00"/>
+  <rect x="320" y="38" width="50" height="60" rx="6" fill="white" stroke="#E5E6EB" stroke-width="0.3"/>
+  <rect x="320" y="38" width="50" height="2.5" rx="1" fill="#86909C"/>
+  <!-- 快捷操作缩略 -->
+  <rect x="155" y="108" width="230" height="44" rx="6" fill="white" stroke="#E5E6EB" stroke-width="0.3"/>
+</svg>
