@@ -66,42 +66,19 @@
   - Mac: Docker Desktop 4.0+
 - **硬件最低配置**：2核CPU / 2GB内存 / 10GB磁盘
 
-### Windows 部署
+### 一键部署（Windows / Linux / Mac 通用）
 
 ```bash
 # 1. 进入项目目录
 cd AI-Tutoring-Platform
 
-# 2. 双击 start.bat 或命令行执行：
-start.bat
-```
+# 2. 构建镜像并启动所有容器
+docker compose up -d --build
 
-### Linux/Mac 部署
-
-```bash
-# 1. 进入项目目录
-cd AI-Tutoring-Platform
-
-# 2. 给脚本添加执行权限
-chmod +x start.sh
-
-# 3. 执行启动脚本
-./start.sh
-```
-
-### 手动分步部署
-
-```bash
-# 构建镜像
-docker compose build
-
-# 启动所有容器（后台运行）
-docker compose up -d
-
-# 查看运行状态
+# 3. 查看运行状态
 docker compose ps
 
-# 查看实时日志
+# 4. 查看实时日志
 docker compose logs -f
 ```
 
@@ -233,8 +210,6 @@ docker stats
 
 ```
 AI-Tutoring-Platform/
-├── start.bat                    # Windows一键启动脚本
-├── start.sh                     # Linux/Mac一键启动脚本
 ├── docker-compose.yml           # Docker编排文件
 │
 ├── backend/                     # 后端服务
