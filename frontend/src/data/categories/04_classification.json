@@ -1,0 +1,106 @@
+{
+  "id": "classification-clustering",
+  "name": "分类与聚类",
+  "color": "#722ED1",
+  "description": "将数据按其特征分门别类。分类是监督学习（已知类别标签），聚类是无监督学习（自动发现自然分组）。",
+  "definition": "分类是根据已知标签的训练数据学习判别规则，对新样本预测类别。聚类是在无标签情况下，根据样本间相似性自动将数据划分为若干组，使组内相似、组间差异最大。两者是数据挖掘的两大核心任务。",
+  "algorithms": [
+    {
+      "name": "逻辑回归",
+      "brief": "最基础的二分类模型，输出概率值，可解释性强",
+      "description": "逻辑回归虽然名字带\"回归\"，实际上是分类模型。通过 Sigmoid 函数将线性组合 z=beta_0+beta_1*x_1+... 映射到 (0,1) 区间，输出 P(y=1|x) 的概率。决策边界是线性的，适合特征与目标呈单调关系的场景。作为分类问题的基线模型，逻辑回归计算快、可解释性强（系数即特征影响方向）。",
+      "formulas": [
+        {
+          "name": "Sigmoid函数",
+          "latex": "P(y=1|x) = 1 / (1 + exp(-z)), z = beta_0 + sum beta_i*x_i",
+          "explanation": "z为线性组合，通过Sigmoid映射为概率。P>0.5判为1类，<0.5判为0类。"
+        },
+        {
+          "name": "对数似然损失",
+          "latex": "L = -sum [y_i*ln(p_i) + (1-y_i)*ln(1-p_i)]",
+          "explanation": "交叉熵损失，衡量预测概率与真实标签的差距。通过梯度下降最小化。"
+        }
+      ],
+      "code": "\"\"\"逻辑回归 - 信用卡违约预测\"\"\"\nimport numpy as np\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.metrics import accuracy_score, roc_auc_score\n\nnp.random.seed(42)\nn = 1000\nX = np.random.randn(n, 5)\n# 生成标签：前两个特征+噪声决定违约概率\ny = (X[:,0] + 2*X[:,1] + np.random.randn(n)*0.5 > 0).astype(int)\n\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)\n\nmodel = LogisticRegression()\nmodel.fit(X_train, y_train)\ny_prob = model.predict_proba(X_test)[:, 1]\ny_pred = model.predict(X_test)\n\nprint(f\"准确率: {accuracy_score(y_test, y_pred):.3f}\")\nprint(f\"AUC: {roc_auc_score(y_test, y_prob):.3f}\")\nprint(f\"特征系数: {model.coef_[0].round(4)}\")",
+      "steps": [
+        "数据预处理：标准化/归一化特征",
+        "划分训练集和测试集",
+        "训练逻辑回归模型",
+        "评估：准确率/AUC/混淆矩阵/F1",
+        "解释：系数符号表示特征影响方向"
+      ],
+      "useCases": [
+        "信用违约预测",
+        "疾病诊断",
+        "垃圾邮件检测",
+        "用户点击率预估"
+      ],
+      "tips": "特征共线性会影响系数解释，用VIF检验。对于非线性关系，可构造多项式特征或使用GBDT。类别不平衡时设置class_weight=\"balanced\"。"
+    },
+    {
+      "name": "K-means聚类",
+      "brief": "最经典的聚类算法，将数据划分为K个簇，最小化簇内平方和",
+      "description": "K-means由 Lloyd 于1957年提出，是最广泛使用的聚类算法。核心思想：随机选K个初始质心→将每个点分配到最近的质心→重新计算质心→重复直到收敛。算法简单高效（O(n*K*d)），但需要预设K值，对初始质心敏感，只能发现球形簇。",
+      "formulas": [
+        {
+          "name": "聚类目标函数",
+          "latex": "min sum_{k=1}^K sum_{x in C_k} ||x - mu_k||^2",
+          "explanation": "最小化每个点到其所属簇质心的平方距离之和（簇内平方和WCSS）。"
+        },
+        {
+          "name": "质心更新",
+          "latex": "mu_k = (1/|C_k|) * sum_{x in C_k} x",
+          "explanation": "质心为簇内所有点的均值。每次迭代后重新计算。"
+        }
+      ],
+      "code": "\"\"\"K-means客户分群+肘部法则\"\"\"\nimport numpy as np\nfrom sklearn.cluster import KMeans\nfrom sklearn.preprocessing import StandardScaler\nimport matplotlib.pyplot as plt\n\n# 模拟RFM数据\nnp.random.seed(42)\nn = 500\nrfm = np.column_stack([\n    np.random.exponential(30, n),   # Recency\n    np.random.poisson(8, n),        # Frequency\n    np.random.normal(500, 150, n)   # Monetary\n])\n\nX = StandardScaler().fit_transform(rfm)\n\n# 肘部法则选K\ninertias = []\nfor k in range(1, 11):\n    km = KMeans(n_clusters=k, random_state=42, n_init=10)\n    km.fit(X)\n    inertias.append(km.inertia_)\n\n# K=3聚类\nkmeans = KMeans(n_clusters=3, random_state=42, n_init=10)\nlabels = kmeans.fit_predict(X)\nprint(f\"各簇样本数: {np.bincount(labels)}\")\nprint(f\"质心: {kmeans.cluster_centers_.round(3)}\")",
+      "steps": [
+        "数据标准化（必须做！距离算法对尺度敏感）",
+        "肘部法则或轮廓系数确定最优K值",
+        "随机初始化K个质心",
+        "分配：每个点到最近质心",
+        "更新：重新计算各簇质心",
+        "重复4-5直到质心不再变化或达最大迭代"
+      ],
+      "useCases": [
+        "客户分群/用户画像",
+        "图像压缩（颜色量化）",
+        "文档聚类",
+        "异常检测（远离簇心的点）"
+      ],
+      "tips": "必须标准化数据！K-means对异常值敏感（质心会被拉偏）。用K-means++初始化改善收敛质量。非球形簇用DBSCAN或谱聚类。"
+    },
+    {
+      "name": "DBSCAN",
+      "brief": "基于密度的聚类算法，可发现任意形状簇并自动识别噪声",
+      "description": "DBSCAN（Density-Based Spatial Clustering of Applications with Noise）由 Ester 等人于1996年提出。核心是密度可达概念：ε-邻域内包含至少MinPts个点的称为核心点，核心点之间通过密度可达连接形成簇，无法连接到任何簇的点标记为噪声。DBSCAN不需要预设簇数K，可发现任意形状的簇，天然具有异常检测能力。",
+      "formulas": [
+        {
+          "name": "核心点定义",
+          "latex": "N_eps(p) = {q in D | dist(p,q) <= eps}, |N_eps(p)| >= MinPts",
+          "explanation": "以p为中心、eps为半径的邻域内至少有MinPts个点，则p为核心点。"
+        },
+        {
+          "name": "密度可达",
+          "latex": "p->q iff chain p=p1,...,pn=q, p_{i+1} in N_eps(p_i), p_i is core",
+          "explanation": "存在一系列核心点连接p和q，则q从p密度可达。同一簇内所有点相互密度连通。"
+        }
+      ],
+      "code": "\"\"\"DBSCAN聚类 - 任意形状簇发现\"\"\"\nimport numpy as np\nfrom sklearn.cluster import DBSCAN\nfrom sklearn.datasets import make_moons\n\n# 生成月牙形数据（K-means无法正确聚类）\nX, _ = make_moons(n_samples=300, noise=0.08, random_state=42)\n\n# DBSCAN聚类\nmodel = DBSCAN(eps=0.2, min_samples=5)\nlabels = model.fit_predict(X)\n\nn_clusters = len(set(labels)) - (1 if -1 in labels else 0)\nn_noise = list(labels).count(-1)\nprint(f\"发现{ n_clusters}个簇, {n_noise}个噪声点\")\nprint(f\"簇标签分布: {np.bincount(labels + 1)}\")",
+      "steps": [
+        "选择合适的距离度量（欧氏/曼哈顿/余弦）",
+        "确定eps和MinPts参数（k-distance图）",
+        "找出所有核心点",
+        "从核心点出发，通过密度可达扩展簇",
+        "标记无法连接到任何簇的点为噪声"
+      ],
+      "useCases": [
+        "地理空间聚类",
+        "异常检测/欺诈发现",
+        "图像分割",
+        "社交网络社区发现"
+      ],
+      "tips": "eps和MinPts的选择至关重要：用k-distance图（k=MinPts）找肘点确定eps。数据维度高时用PCA降维后再聚类。数据密度差异大时DBSCAN效果差。"
+    }
+  ]
+}

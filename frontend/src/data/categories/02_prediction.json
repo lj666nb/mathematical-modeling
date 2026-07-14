@@ -1,0 +1,170 @@
+{
+  "id": "prediction",
+  "name": "预测模型",
+  "color": "#00B42A",
+  "description": "基于历史数据建立数学模型，对未来趋势或未知数据进行推断和预测。",
+  "definition": "预测模型通过分析历史数据中的规律和模式，建立输入与输出之间的映射关系，对未知数据或未来趋势做出推断。核心在于捕捉数据中的趋势、季节性和随机波动。",
+  "algorithms": [
+    {
+      "name": "ARIMA/SARIMA",
+      "brief": "最经典的时间序列预测模型，通过差分和自回归移动平均建模",
+      "description": "ARIMA(p,d,q)模型由三个部分组成：AR(p)自回归（当前值与过去p个值的关系）、I(d)差分（使非平稳序列变平稳）、MA(q)移动平均（当前值与过去q个误差的关系）。SARIMA在此基础上加入季节性成分(P,D,Q,s)，是经济预测、销量预测等场景的首选基线模型。建模关键步骤：平稳性检验(ADF)→确定d→ACF/PACF图定阶p,q→残差白噪声检验。",
+      "formulas": [
+        {
+          "name": "ARIMA(p,d,q)",
+          "latex": "Phi(B)(1-B)^d X_t = Theta(B) * epsilon_t",
+          "explanation": "B为滞后算子(B*X_t=X_{t-1})，d为差分阶数，Phi和Theta分别为AR和MA多项式。"
+        },
+        {
+          "name": "AIC准则",
+          "latex": "AIC = -2*ln(L) + 2k",
+          "explanation": "L为似然函数值，k为参数个数。AIC越小模型越好，平衡拟合优度和复杂度。"
+        }
+      ],
+      "code": "\"\"\"ARIMA时间序列预测\"\"\"\nimport pandas as pd\nimport numpy as np\nfrom statsmodels.tsa.arima.model import ARIMA\n\n# 模拟36个月销售额（趋势+季节性+噪声）\nnp.random.seed(42)\nt = np.arange(36)\ntrend = 100 + 2 * t\nseasonal = 30 * np.sin(2 * np.pi * t / 12)\nnoise = np.random.normal(0, 10, 36)\nsales = trend + seasonal + noise\n\n# 拟合ARIMA(1,1,1)\nmodel = ARIMA(sales, order=(1, 1, 1))\nfitted = model.fit()\nprint(fitted.summary())\n\n# 预测未来6个月\nforecast = fitted.forecast(steps=6)\nprint(f\"未来6个月预测: {forecast.round(1)}\")",
+      "steps": [
+        "平稳性检验（ADF检验/观察时序图）",
+        "若不平稳，进行差分直到平稳（确定d）",
+        "绘制ACF和PACF图确定p和q",
+        "拟合ARIMA模型并检验残差是否为白噪声",
+        "使用AIC/BIC比较多个候选模型",
+        "向前预测并计算置信区间"
+      ],
+      "useCases": [
+        "销售额/客流量预测",
+        "股票价格走势分析",
+        "宏观经济指标预测",
+        "库存需求预测"
+      ],
+      "tips": "使用pmdarima库的auto_arima()可自动搜索最优(p,d,q)。季节性数据用SARIMA，设置seasonal_order=(P,D,Q,s)。"
+    },
+    {
+      "name": "Holt-Winters指数平滑",
+      "brief": "同时捕捉水平、趋势、季节性的三指数平滑方法",
+      "description": "Holt-Winters方法（也称三指数平滑）是处理带趋势和季节性时间序列的经典方法。由三个平滑方程组成：水平项l_t（序列当前\"基线\"）、趋势项b_t（增长/下降速率）、季节项s_t（周期性波动模式）。分为加法模型（季节波动幅度恒定）和乘法模型（季节波动幅度随水平变化），后者更适合经济数据。",
+      "formulas": [
+        {
+          "name": "加法模型预测",
+          "latex": "y_{t+h} = l_t + h*b_t + s_{t-m+h}",
+          "explanation": "l_t水平、b_t趋势、s_t季节，h为预测步数，m为季节周期长度。"
+        },
+        {
+          "name": "水平更新",
+          "latex": "l_t = alpha*(y_t-s_{t-m}) + (1-alpha)*(l_{t-1}+b_{t-1})",
+          "explanation": "alpha为水平平滑参数(0~1)，越大对新观测越敏感。"
+        }
+      ],
+      "code": "\"\"\"Holt-Winters指数平滑预测\"\"\"\nimport numpy as np\nfrom statsmodels.tsa.holtwinters import ExponentialSmoothing\n\n# 模拟带季节性的季度数据\nnp.random.seed(42)\nt = np.arange(48)\ntrend = 50 + 0.5 * t\nseasonal = 15 * np.sin(2 * np.pi * t / 4)  # 周期=4\nnoise = np.random.normal(0, 5, 48)\ndata = trend + seasonal + noise\n\n# Holt-Winters加法模型\nmodel = ExponentialSmoothing(\n    data, seasonal_periods=4,\n    trend=\"add\", seasonal=\"add\"\n)\nfitted = model.fit()\nforecast = fitted.forecast(8)\nprint(f\"未来8期预测: {forecast.round(1)}\")",
+      "steps": [
+        "确定季节周期m（如月度数据m=12）",
+        "选择加法或乘法模型（观察季节波动幅度）",
+        "估计初始水平/趋势/季节值",
+        "通过最小化预测误差优化alpha/beta/gamma",
+        "向前预测并计算预测区间"
+      ],
+      "useCases": [
+        "零售季度销售预测",
+        "旅游客流量预测",
+        "电力负荷预测"
+      ],
+      "tips": "当季节波动幅度随数据水平增长时用乘法模型，恒定用加法模型。statsmodels的ExponentialSmoothing支持自动优化参数。"
+    },
+    {
+      "name": "Prophet",
+      "brief": "Facebook开源的时间序列预测工具，自动处理节假日和变点",
+      "description": "Prophet由Facebook于2017年开源，采用广义加法模型(GAM)：y(t)=g(t)+s(t)+h(t)+epsilon，即趋势+季节+节假日+噪声。最大优势在于：(1)全自动化，无需手动调参；(2)鲁棒性强，自动处理缺失值和异常值；(3)支持自定义节假日效应和变点检测；(4)提供不确定性区间。特别适合业务预测场景（日/周/月数据均可）。",
+      "formulas": [
+        {
+          "name": "趋势模型",
+          "latex": "g(t) = (k + a(t)^T*delta)*t + (m + a(t)^T*gamma)",
+          "explanation": "分段线性趋势，delta为趋势变化量，a(t)指示变点位置。自动检测趋势转折点。"
+        },
+        {
+          "name": "季节模型",
+          "latex": "s(t) = sum_{n=1}^N [a_n*cos(2*pi*n*t/P) + b_n*sin(2*pi*n*t/P)]",
+          "explanation": "傅里叶级数建模周期季节性，N越大越灵活。P为周期（年=365.25，周=7）。"
+        }
+      ],
+      "code": "\"\"\"Prophet时间序列预测\"\"\"\nimport pandas as pd\nimport numpy as np\nfrom prophet import Prophet\n\n# 模拟2年日度数据\nnp.random.seed(42)\ndates = pd.date_range(\"2024-01-01\", periods=730, freq=\"D\")\ntrend = np.linspace(100, 200, 730)\nweekly = 10 * np.sin(2*np.pi*np.arange(730)/7)\nyearly = 20 * np.sin(2*np.pi*np.arange(730)/365.25)\ndata = trend + weekly + yearly + np.random.normal(0, 5, 730)\n\ndf = pd.DataFrame({\"ds\": dates, \"y\": data})\nmodel = Prophet(yearly_seasonality=True, weekly_seasonality=True)\nmodel.fit(df)\n\nfuture = model.make_future_dataframe(periods=90)\nforecast = model.predict(future)\nprint(forecast[[\"ds\", \"yhat\", \"yhat_lower\", \"yhat_upper\"]].tail())",
+      "steps": [
+        "准备两列数据：ds(日期)和y(目标值)",
+        "创建Prophet模型，指定季节性和节假日",
+        "model.fit()训练模型",
+        "model.make_future_dataframe()创建未来日期",
+        "model.predict()生成预测和置信区间",
+        "model.plot_components()可视化趋势/季节分解"
+      ],
+      "useCases": [
+        "业务KPI预测",
+        "网站流量预测",
+        "产品需求预测",
+        "财务指标预测"
+      ],
+      "tips": "Prophet对缺失值、异常值和趋势变化很鲁棒。添加中国节假日用Prophet(holidays=holidays_df)。预测不确定性区间来自趋势的MCMC采样。"
+    },
+    {
+      "name": "LSTM/GRU",
+      "brief": "深度学习时序预测模型，擅长捕捉长期依赖和非线性模式",
+      "description": "LSTM（长短期记忆网络）通过三个门控单元（遗忘门、输入门、输出门）解决RNN的长程梯度消失问题。GRU（门控循环单元）是其简化版，合并遗忘和输入门为更新门，参数更少训练更快。对于复杂非线性时序模式，LSTM/GRU通常优于传统统计方法，但需要更多数据和调参。",
+      "formulas": [
+        {
+          "name": "LSTM门控方程",
+          "latex": "f_t=sigma(W_f*[h_{t-1},x_t]), i_t=sigma(W_i*[h_{t-1},x_t]), o_t=sigma(W_o*[h_{t-1},x_t])",
+          "explanation": "遗忘门f决定丢弃什么信息，输入门i决定存储什么新信息，输出门o决定输出什么。sigma为sigmoid函数。"
+        },
+        {
+          "name": "GRU更新方程",
+          "latex": "z_t=sigma(W_z*[h_{t-1},x_t]), r_t=sigma(W_r*[h_{t-1},x_t])",
+          "explanation": "z_t更新门控制历史信息保留比例，r_t重置门控制忽略多少历史。比LSTM少一个门。"
+        }
+      ],
+      "code": "\"\"\"LSTM多步时间序列预测 - PyTorch\"\"\"\nimport numpy as np\nimport torch\nimport torch.nn as nn\n\n# 模拟数据\nnp.random.seed(42)\ndata = np.sin(np.linspace(0, 20*np.pi, 1000)) + 0.1*np.random.randn(1000)\n\n# 创建滑动窗口数据集\ndef create_sequences(data, seq_len=50):\n    X, y = [], []\n    for i in range(len(data)-seq_len):\n        X.append(data[i:i+seq_len])\n        y.append(data[i+seq_len])\n    return np.array(X), np.array(y)\n\nX, y = create_sequences(data, 50)\nX = torch.FloatTensor(X).unsqueeze(-1)  # [samples, seq_len, features=1]\ny = torch.FloatTensor(y).unsqueeze(-1)\n\nclass LSTMPredictor(nn.Module):\n    def __init__(self, input_size=1, hidden=64, layers=2):\n        super().__init__()\n        self.lstm = nn.LSTM(input_size, hidden, layers, batch_first=True)\n        self.fc = nn.Linear(hidden, 1)\n\n    def forward(self, x):\n        out, _ = self.lstm(x)\n        return self.fc(out[:, -1, :])\n\nmodel = LSTMPredictor()\noptimizer = torch.optim.Adam(model.parameters(), lr=0.001)\nloss_fn = nn.MSELoss()\n\nfor epoch in range(100):\n    model.train()\n    optimizer.zero_grad()\n    loss = loss_fn(model(X[:800]), y[:800])\n    loss.backward()\n    optimizer.step()\n\nmodel.eval()\nwith torch.no_grad():\n    pred = model(X[800:])\n    mse = loss_fn(pred, y[800:])\nprint(f\"测试集MSE: {mse.item():.4f}\")",
+      "steps": [
+        "数据预处理：归一化/标准化到[0,1]或N(0,1)",
+        "创建滑动窗口：用过去N个时间步预测未来M步",
+        "设计LSTM网络：输入层→LSTM层(含Dropout)→全连接输出层",
+        "训练：Adam优化器+MSE损失，早停防止过拟合",
+        "评估：在测试集上计算RMSE/MAE/MAPE"
+      ],
+      "useCases": [
+        "股票价格预测",
+        "能源负荷预测",
+        "交通流量预测",
+        "自然语言处理(文本生成)"
+      ],
+      "tips": "数据量少(<1000)时LSTM不如ARIMA。必须归一化输入。使用Dropout(0.2-0.5)防止过拟合。GRU训练更快但LSTM在长序列上效果略好。"
+    },
+    {
+      "name": "XGBoost",
+      "brief": "梯度提升树模型，表格数据预测的王者算法",
+      "description": "XGBoost（eXtreme Gradient Boosting）由陈天奇于2016年提出，是Kaggle竞赛中获奖最多的算法之一。相比传统GBDT，XGBoost引入了正则化项防止过拟合、列采样、加权分位数草图等技术，训练速度和精度都大幅提升。对于表格数据的回归/分类任务，XGBoost通常优于深度学习方法，且可解释性更好（特征重要性+SHAP值）。",
+      "formulas": [
+        {
+          "name": "目标函数",
+          "latex": "Obj = sum_i L(y_i, yhat_i) + sum_k Omega(f_k)",
+          "explanation": "第一项为损失函数（如MSE），第二项为正则化项（叶子节点数+L2正则），防止过拟合。"
+        },
+        {
+          "name": "二阶泰勒展开",
+          "latex": "Obj^{(t)} = sum_i [g_i*f_t(x_i) + 0.5*h_i*f_t(x_i)^2] + Omega(f_t)",
+          "explanation": "g_i和h_i分别为一阶和二阶梯度，XGBoost用二阶信息比GBDT更精确。"
+        }
+      ],
+      "code": "\"\"\"XGBoost时间序列预测（特征工程方法）\"\"\"\nimport numpy as np\nimport pandas as pd\nimport xgboost as xgb\nfrom sklearn.metrics import mean_squared_error\n\n# 模拟数据\nnp.random.seed(42)\nt = np.arange(200)\ny = 10 + 0.5*t + 5*np.sin(t/10) + np.random.normal(0, 3, 200)\n\n# 特征工程：滞后特征+滚动统计\ndef make_features(data, lags=[1,2,3,7,14]):\n    df = pd.DataFrame({\"y\": data})\n    for lag in lags:\n        df[f\"lag_{lag}\"] = df[\"y\"].shift(lag)\n    df[\"rolling_mean_7\"] = df[\"y\"].shift(1).rolling(7).mean()\n    df[\"rolling_std_7\"] = df[\"y\"].shift(1).rolling(7).std()\n    return df.dropna()\n\ndf = make_features(y)\nX = df.drop(\"y\", axis=1).values\ny_target = df[\"y\"].values\n\n# 训练/测试分割\ntrain_n = 150\nmodel = xgb.XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.1)\nmodel.fit(X[:train_n], y_target[:train_n])\npred = model.predict(X[train_n:])\nprint(f\"测试RMSE: {np.sqrt(mean_squared_error(y_target[train_n:], pred)):.3f}\")",
+      "steps": [
+        "特征工程：构造滞后特征(lag1/lag7/lag30)、滚动统计(mean/std)、时间特征(月/星期/季度)",
+        "划分训练集和测试集（时序数据不能随机划分！）",
+        "训练XGBoost模型并调参（max_depth/learning_rate/n_estimators）",
+        "特征重要性分析，筛选有效特征",
+        "在测试集上评估，必要时做残差分析"
+      ],
+      "useCases": [
+        "销量/需求预测",
+        "房价预测",
+        "客户流失预测",
+        "信用评分卡"
+      ],
+      "tips": "时序预测需特别注意：不能随机交叉验证！用时间序列交叉验证(TimeSeriesSplit)。特征工程比模型调参更重要。学习率0.01-0.1，max_depth 3-7。"
+    }
+  ]
+}

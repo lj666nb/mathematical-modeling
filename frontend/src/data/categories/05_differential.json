@@ -1,0 +1,103 @@
+{
+  "id": "differential-equations",
+  "name": "微分方程",
+  "color": "#F53F3F",
+  "description": "用微分方程描述系统的动态变化规律，是连续系统建模的核心工具。",
+  "definition": "微分方程模型通过建立变量变化率之间的关系来描述系统的动态行为。常微分方程（ODE）描述单变量随时间变化，偏微分方程（PDE）描述多变量时空演化。广泛应用于人口动力学、传染病建模、物理过程模拟等。",
+  "algorithms": [
+    {
+      "name": "Euler法",
+      "brief": "最基础的ODE数值解法，用差分近似微分",
+      "description": "Euler法是最简单的一阶数值求解方法。核心思想：将连续时间离散为步长h，用当前点的导数近似下一时刻的值：y_{n+1}=y_n+h*f(t_n,y_n)。实现极其简单但精度较低（一阶），全局误差为O(h)。适合教学理解数值求解原理，实际应用推荐RK4。",
+      "formulas": [
+        {
+          "name": "Euler递推公式",
+          "latex": "y_{n+1} = y_n + h * f(t_n, y_n)",
+          "explanation": "h为步长，f(t,y)=dy/dt。本质是用矩形面积近似积分。步长越小精度越高但计算量越大。"
+        },
+        {
+          "name": "局部截断误差",
+          "latex": "e_n = O(h^2)",
+          "explanation": "每步误差正比于h^2，经过N步后全局误差累积为O(h)。"
+        }
+      ],
+      "code": "\"\"\"Euler法求解ODE - Logistic增长模型\"\"\"\nimport numpy as np\nimport matplotlib.pyplot as plt\n\n# dN/dt = r*N*(1-N/K)\ndef logistic(t, N, r=0.5, K=1000):\n    return r * N * (1 - N / K)\n\n# Euler法\ndef euler(f, y0, t_span, h):\n    t0, t_end = t_span\n    ts = np.arange(t0, t_end + h, h)\n    ys = np.zeros(len(ts))\n    ys[0] = y0\n    for i in range(len(ts) - 1):\n        ys[i+1] = ys[i] + h * f(ts[i], ys[i])\n    return ts, ys\n\nts, ys = euler(logistic, y0=10, t_span=(0, 20), h=0.5)\nprint(f\"最终种群: {ys[-1]:.0f} (容量K=1000)\")",
+      "steps": [
+        "确定微分方程 dy/dt = f(t,y) 和初值 y(t0)=y0",
+        "选择步长h（步长越小精度越高但计算量越大）",
+        "从t0开始，y_{n+1}=y_n+h*f(t_n,y_n)迭代",
+        "直到到达终止时间t_end"
+      ],
+      "useCases": [
+        "教学演示",
+        "快速原型验证",
+        "简单ODE的粗略估计"
+      ],
+      "tips": "Euler法精度低，不建议用于实际项目。步长过大可能导致数值不稳定（解发散）。改进的Euler法（中点法）精度提升为二阶。"
+    },
+    {
+      "name": "Runge-Kutta(RK4)",
+      "brief": "四阶ODE求解器，精度和效率的黄金平衡点",
+      "description": "四阶Runge-Kutta法（RK4）是求解ODE最常用的方法。每步计算4个斜率估计值（起点的k1、中点的k2和k3、终点的k4），加权平均得到最终斜率。全局误差为O(h^4)，精度远高于Euler法且实现仍较简单。RK4是SciPy odeint的默认方法，适合绝大多数非刚性ODE问题。",
+      "formulas": [
+        {
+          "name": "RK4递推公式",
+          "latex": "y_{n+1} = y_n + (h/6)*(k1+2k2+2k3+k4)",
+          "explanation": "k1=h*f(t_n,y_n), k2=h*f(t_n+h/2,y_n+k1/2), k3=h*f(t_n+h/2,y_n+k2/2), k4=h*f(t_n+h,y_n+k3)。"
+        },
+        {
+          "name": "全局误差",
+          "latex": "e_{global} = O(h^4)",
+          "explanation": "步长减半，误差约减小16倍。h=0.01时可得较高精度。"
+        }
+      ],
+      "code": "\"\"\"RK4法求解SIR传染病模型\"\"\"\nimport numpy as np\n\ndef sir(t, y, beta=0.3, gamma=0.1):\n    S, I, R = y\n    N = S + I + R\n    return [-beta*S*I/N, beta*S*I/N - gamma*I, gamma*I]\n\ndef rk4(f, y0, t_span, h):\n    t0, t_end = t_span\n    ts = np.arange(t0, t_end + h, h)\n    ys = np.zeros((len(ts), len(y0)))\n    ys[0] = y0\n    for i in range(len(ts) - 1):\n        t, y = ts[i], ys[i]\n        k1 = np.array(f(t, y))\n        k2 = np.array(f(t + h/2, y + h*k1/2))\n        k3 = np.array(f(t + h/2, y + h*k2/2))\n        k4 = np.array(f(t + h, y + h*k3))\n        ys[i+1] = y + h/6 * (k1 + 2*k2 + 2*k3 + k4)\n    return ts, ys\n\nts, ys = rk4(sir, [9999, 1, 0], (0, 100), h=0.1)\npeak_day = ts[np.argmax(ys[:,1])]\nprint(f\"感染峰值: 第{peak_day:.0f}天, 最大感染人数: {ys[:,1].max():.0f}\")",
+      "steps": [
+        "定义ODE系统 y'=f(t,y) 和初值",
+        "选择步长h（常用0.01-0.1）",
+        "每步计算k1(起点斜率)、k2/k3(中点斜率)、k4(终点斜率)",
+        "加权平均更新y_{n+1}",
+        "重复直到终止时间"
+      ],
+      "useCases": [
+        "天体轨道模拟",
+        "化学反应动力学",
+        "电路仿真",
+        "SIR/SEIR传染病建模"
+      ],
+      "tips": "RK4是刚性不大的ODE问题的首选方法。对于刚性ODE（如化学反应中快慢时间尺度混合），用隐式方法（如odeint的BDF求解器）。SciPy推荐用solve_ivp代替odeint。"
+    },
+    {
+      "name": "有限差分法",
+      "brief": "求解偏微分方程(PDE)的核心数值方法，将导数离散化为差分",
+      "description": "有限差分法（Finite Difference Method）将连续的PDE在空间和时间上离散化为网格，用差分商(f(x+h)-f(x))/h近似导数，将PDE转化为代数方程组。Crank-Nicolson隐格式是无条件稳定的经典格式，广泛用于热传导方程。FDM概念直观、实现方便，是PDE数值求解的入门首选。",
+      "formulas": [
+        {
+          "name": "中心差分(二阶精度)",
+          "latex": "f''(x) \\approx (f(x+h) - 2f(x) + f(x-h)) / h^2",
+          "explanation": "用三点近似二阶导数，截断误差O(h^2)。比前向/后向差分精度高。"
+        },
+        {
+          "name": "Crank-Nicolson格式",
+          "latex": "(u^{n+1}_j-u^n_j)/dt = 0.5*(D_xx u^{n+1}_j + D_xx u^n_j)",
+          "explanation": "时间上取两步平均，无条件稳定。每个时间步需求解三对角线性方程组。"
+        }
+      ],
+      "code": "\"\"\"有限差分法 - 一维热传导方程\"\"\"\nimport numpy as np\n\n# du/dt = alpha * d^2u/dx^2, x in [0,L], t in [0,T]\nL, T, alpha = 1.0, 0.5, 0.01\nnx, nt = 50, 500\ndx, dt = L/(nx-1), T/nt\nx = np.linspace(0, L, nx)\n\n# 初始条件: 中间高温\ntemp = np.sin(np.pi * x / L)\ntemp_new = temp.copy()\n\n# FTCS显式格式\nfor n in range(nt):\n    for i in range(1, nx-1):\n        temp_new[i] = temp[i] + alpha*dt/dx**2 * (temp[i+1] - 2*temp[i] + temp[i-1])\n    temp = temp_new.copy()\n\nprint(f\"最终温度分布: 中心={temp[nx//2]:.3f}, 边缘={temp[0]:.3f}\")",
+      "steps": [
+        "确定求解域和边界条件（Dirichlet/Neumann）",
+        "网格剖分：空间步长dx和时间步长dt",
+        "选择差分格式（显式/隐式/Crank-Nicolson）",
+        "稳定性条件检查（显式FTCS: dt <= dx^2/(2*alpha)）",
+        "逐时间步求解线性方程组"
+      ],
+      "useCases": [
+        "热传导模拟",
+        "扩散过程",
+        "期权定价（Black-Scholes方程）",
+        "波动方程"
+      ],
+      "tips": "显式格式有条件稳定，需满足CFL条件。隐式格式无条件稳定但需求解方程组。Crank-Nicolson兼顾精度和稳定性。"
+    }
+  ]
+}

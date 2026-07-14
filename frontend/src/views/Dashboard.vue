@@ -52,7 +52,7 @@
             <div class="stat-item experiments">
               <div class="stat-item-header">
                 <div class="stat-icon-wrap"><el-icon :size="20"><Notebook /></el-icon></div>
-                <el-tag size="small" effect="plain" style="border:none;background:var(--primary-light);color:var(--primary);border-radius:4px;font-size: var(--text-xs);">建模题库</el-tag>
+                <el-tag size="small" effect="plain" class="stat-item-tag">建模题库</el-tag>
               </div>
               <div class="stat-value" :class="{ empty: stats.experimentCount === 0 }">{{ stats.experimentCount || '暂无' }}</div>
               <div class="stat-label">建模实验题目总数</div>
@@ -61,7 +61,7 @@
             <div class="stat-item practices">
               <div class="stat-item-header">
                 <div class="stat-icon-wrap"><el-icon :size="20"><Tickets /></el-icon></div>
-                <el-tag size="small" effect="plain" style="border:none;background:var(--success-bg);color:var(--success);border-radius:4px;font-size: var(--text-xs);">实训统计</el-tag>
+                <el-tag size="small" effect="plain" class="stat-item-tag" style="background:var(--success-bg);color:var(--success);">实训统计</el-tag>
               </div>
               <div class="stat-value" :class="{ empty: stats.practiceCount === 0 }">{{ stats.practiceCount || '暂无' }}</div>
               <div class="stat-label">累计建模实验记录</div>
@@ -70,7 +70,7 @@
             <div class="stat-item score">
               <div class="stat-item-header">
                 <div class="stat-icon-wrap"><el-icon :size="20"><TrendCharts /></el-icon></div>
-                <el-tag size="small" effect="plain" style="border:none;background:var(--warning-bg);color:var(--warning);border-radius:4px;font-size: var(--text-xs);">成绩分析</el-tag>
+                <el-tag size="small" effect="plain" class="stat-item-tag" style="background:var(--warning-bg);color:var(--warning);">成绩分析</el-tag>
               </div>
               <div class="stat-value" :class="{ empty: stats.avgScore === '-' }">{{ stats.avgScore !== '-' ? stats.avgScore + '分' : '暂无' }}</div>
               <div class="stat-label">平均得分</div>
@@ -79,7 +79,7 @@
             <div class="stat-item chats">
               <div class="stat-item-header">
                 <div class="stat-icon-wrap"><el-icon :size="20"><ChatDotSquare /></el-icon></div>
-                <el-tag size="small" effect="plain" style="border:none;background:var(--info-bg);color:var(--info);border-radius:4px;font-size: var(--text-xs);">AI辅助</el-tag>
+                <el-tag size="small" effect="plain" class="stat-item-tag" style="background:var(--info-bg);color:var(--info);">AI辅助</el-tag>
               </div>
               <div class="stat-value" :class="{ empty: stats.chatCount === 0 }">{{ stats.chatCount || '暂无' }}</div>
               <div class="stat-label">AI智能体对话次数</div>
@@ -88,10 +88,10 @@
           </div>
 
           <!-- ===== ② 快捷操作 ===== -->
-          <div class="app-card" style="padding:24px 28px;margin-bottom:28px;">
+          <div class="app-card lift-card" style="padding:24px 28px;margin-bottom:28px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
               <span style="font-size:var(--text-md);font-weight:600;">快捷操作</span>
-              <span style="font-size:var(--text-sm);color:var(--text-tertiary);">快速进入核心建模功能</span>
+              <span class="text-muted">快速进入核心建模功能</span>
             </div>
             <div class="quick-grid">
               <div class="quick-btn q-config" @click="$router.push('/llm-config')"><el-icon class="q-icon" style="color:var(--primary);"><Setting /></el-icon><span>配置API</span></div>
@@ -264,6 +264,11 @@ onMounted(async () => {
   display:flex; align-items:center; gap:10px; padding:12px 20px; background:var(--primary-light);
   border-radius:8px; margin-bottom:24px; font-size:var(--text-sm); color:var(--text-secondary);
 }
+.stat-change {
+  margin-top: 10px; padding: 4px 10px; border-radius: 6px; font-size: var(--text-xs); font-weight: 500;
+}
+.stat-item-tag { border:none; border-radius:4px; font-size: var(--text-xs); }
+.stat-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .mini-chart { display:flex; align-items:flex-end; justify-content:space-around; height:120px; padding:8px 0; gap:8px; }
 .chart-bar-col { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
 .chart-bar { width:100%; max-width:36px; border-radius:4px 4px 0 0; transition:height 0.6s ease; min-height:4px; }

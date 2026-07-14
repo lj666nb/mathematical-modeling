@@ -1,0 +1,168 @@
+{
+  "id": "optimization",
+  "name": "优化模型",
+  "color": "#165DFF",
+  "description": "在给定约束条件下，寻找使目标函数达到最优（最大或最小）的决策方案。",
+  "definition": "优化模型研究如何在有限资源下做出最优决策。核心三要素：决策变量（可控因素）、目标函数（优化指标）、约束条件（限制条件）。广泛应用于生产计划、物流调度、投资组合等领域。",
+  "algorithms": [
+    {
+      "name": "单纯形法",
+      "brief": "线性规划经典算法，在多面体顶点间迭代寻优",
+      "description": "单纯形法（Simplex Method）由 George Dantzig 于1947年提出，是求解线性规划问题的核心算法。基本思想：线性规划最优解必在可行域顶点达到，因此只需在顶点间沿目标函数改善方向迭代移动。每次迭代称为转轴（pivot），从一个基本可行解移到相邻的另一个。实际应用极其高效，可处理成千上万个变量和约束。",
+      "formulas": [
+        {
+          "name": "标准型",
+          "latex": "min c^T x  s.t.  Ax = b, x >= 0",
+          "explanation": "通过引入松弛变量将不等式约束转化为等式约束，构造初始单纯形表。"
+        },
+        {
+          "name": "最优性条件（Reduced Cost）",
+          "latex": "c_j = c_j - c_B^T B^{-1} a_j >= 0",
+          "explanation": "所有非基变量的检验数非负时达到最优（对于最小化问题）。"
+        }
+      ],
+      "code": "\"\"\"单纯形法 - 两阶段法实现\"\"\"\nimport numpy as np\n\ndef simplex(c, A, b):\n    \"\"\"min c^T x  s.t. Ax <= b, x >= 0\"\"\"\n    m, n = A.shape\n    # 加入松弛变量构造初始单纯形表\n    tableau = np.zeros((m + 1, n + m + 1))\n    tableau[:m, :n] = A\n    tableau[:m, n:n+m] = np.eye(m)\n    tableau[:m, -1] = b.flatten()\n    tableau[-1, :n] = c\n    basic = list(range(n, n + m))\n\n    while True:\n        obj = tableau[-1, :-1]\n        if np.all(obj >= -1e-10):\n            break\n        enter = np.argmin(obj)\n        col = tableau[:-1, enter]\n        rhs = tableau[:-1, -1]\n        ratios = np.where(col > 1e-10, rhs / col, np.inf)\n        if np.all(ratios == np.inf):\n            raise ValueError(\"解无界\")\n        leave = np.argmin(ratios)\n        # 转轴\n        pivot = tableau[leave, enter]\n        tableau[leave] /= pivot\n        for i in range(len(tableau)):\n            if i != leave:\n                tableau[i] -= tableau[i, enter] * tableau[leave]\n        basic[leave] = enter\n\n    x = np.zeros(n)\n    for i, bv in enumerate(basic):\n        if bv < n:\n            x[bv] = tableau[i, -1]\n    return x, tableau[-1, -1]\n\n# 示例: max Z = 40x1+30x2, s.t. 2x1+x2<=100, 3x1+4x2<=120\nc = [-40, -30]\nA = [[2, 1], [3, 4]]\nb = [100, 120]\nx, obj = simplex(c, A, b)\nprint(f\"A产量={x[0]:.1f}, B产量={x[1]:.1f}, 最大利润={-obj:.1f}\")",
+      "steps": [
+        "将问题转化为标准型（min c^T x, Ax=b, x>=0）",
+        "构造初始单纯形表，确定初始基可行解",
+        "计算检验数（Reduced Cost），判断是否最优",
+        "若未达最优，选最小检验数对应变量入基",
+        "用最小比值法确定出基变量",
+        "执行转轴运算更新单纯形表，重复步骤3-6"
+      ],
+      "useCases": [
+        "生产计划优化",
+        "资源分配问题",
+        "运输问题",
+        "配料问题"
+      ],
+      "tips": "实际应用推荐 SciPy 的 linprog 或 Gurobi/CPLEX，手写单纯形法主要用于理解算法原理。"
+    },
+    {
+      "name": "内点法",
+      "brief": "从可行域内部逼近最优解，适合大规模稀疏问题",
+      "description": "内点法（Interior Point Method）由 Karmarkar 于1984年提出，具有多项式时间复杂度。与单纯形法沿边界迭代不同，内点法从可行域内部出发，通过障碍函数（barrier function）阻止解触碰边界，逐步逼近最优解。核心思想是用牛顿法求解一系列扰动后的 KKT 条件。对于大规模稀疏线性规划（变量数>10万），内点法通常显著快于单纯形法。",
+      "formulas": [
+        {
+          "name": "对数障碍问题",
+          "latex": "min c^T x - mu sum ln x_i, Ax = b, x > 0",
+          "explanation": "mu>0为障碍参数，趋于0时障碍问题解趋于原问题解。对数项阻止变量接近0。"
+        },
+        {
+          "name": "中心路径方程",
+          "latex": "A^T y + s = c, Ax = b, XSe = mu*e",
+          "explanation": "Primal-Dual内点法的核心KKT方程组，用牛顿法迭代求解。"
+        }
+      ],
+      "code": "\"\"\"内点法 - SciPy HiGHS求解器\"\"\"\nimport numpy as np\nfrom scipy.optimize import linprog\n\nnp.random.seed(42)\nn, m = 200, 100\nc = np.random.randn(n)\nA = np.random.randn(m, n)\nb = A @ np.abs(np.random.randn(n)) + 1\n\nresult = linprog(c, A_ub=A, b_ub=b, method=\"highs\")\nprint(f\"最优值: {result.fun:.4f}, 迭代: {result.nit}\")",
+      "steps": [
+        "选择初始内点 x>0 和障碍参数 mu0",
+        "用牛顿法求解当前mu对应的KKT条件",
+        "减小mu = sigma*mu（sigma=0.1）",
+        "以前一步解为初始点重复",
+        "mu足够小时停止"
+      ],
+      "useCases": [
+        "大规模线性规划（>10000变量）",
+        "二次规划",
+        "半定规划（SDP）",
+        "锥优化"
+      ],
+      "tips": "SciPy的HiGHS求解器同时使用单纯形法和内点法。中小规模用单纯形法，大规模稀疏用内点法。"
+    },
+    {
+      "name": "遗传算法",
+      "brief": "模拟自然进化的智能优化算法，适合复杂非线性优化",
+      "description": "遗传算法（Genetic Algorithm, GA）由 John Holland 于1975年提出，模拟自然界适者生存的进化机制。将解编码为染色体（二进制串或实数向量），通过选择（适应度高的个体更可能存活）、交叉（两个父代交换基因片段产生后代）和变异（随机改变某些基因）不断迭代进化种群。GA不依赖梯度信息，适合求解黑箱优化、多峰函数和组合优化问题。",
+      "formulas": [
+        {
+          "name": "轮盘赌选择概率",
+          "latex": "P(i) = f_i / sum_j f_j",
+          "explanation": "个体被选中的概率正比于其适应度，适应度越高越可能被选中繁殖。"
+        }
+      ],
+      "code": "\"\"\"遗传算法 - 求解Rastrigin函数最小值\"\"\"\nimport numpy as np\n\ndef rastrigin(x):\n    \"\"\"全局最小值 f(0,...,0) = 0\"\"\"\n    return 10*len(x) + sum(x**2 - 10*np.cos(2*np.pi*x))\n\npop_size, dim, gens = 100, 5, 200\nlb, ub = -5.12, 5.12\npop = np.random.uniform(lb, ub, (pop_size, dim))\nbest_x, best_f = None, np.inf\n\nfor gen in range(gens):\n    fit = np.array([1/(1+rastrigin(ind)) for ind in pop])\n    elite = pop[np.argmax(fit)]\n    if (f := rastrigin(elite)) < best_f:\n        best_f, best_x = f, elite.copy()\n    prob = fit / fit.sum()\n    new_pop = [elite]\n    while len(new_pop) < pop_size:\n        p1, p2 = pop[np.random.choice(pop_size, 2, p=prob)]\n        alpha = np.random.rand(dim)\n        child = alpha*p1 + (1-alpha)*p2\n        mask = np.random.rand(dim) < 0.05\n        child[mask] += np.random.normal(0, 0.5, mask.sum())\n        new_pop.append(np.clip(child, lb, ub))\n    pop = np.array(new_pop[:pop_size])\n\nprint(f\"最优解: {best_x.round(4)}\")\nprint(f\"函数值: {best_f:.6f} (理论最小值=0)\")",
+      "steps": [
+        "编码：将解表示为染色体（二进制/实数编码）",
+        "初始化种群：随机生成 N 个个体",
+        "适应度评估：计算每个个体的适应度值",
+        "选择：按适应度比例选出父代（轮盘赌/锦标赛选择）",
+        "交叉：父代染色体交换基因片段产生子代",
+        "变异：子代基因以低概率随机改变",
+        "精英保留后重复步骤3-6直到收敛"
+      ],
+      "useCases": [
+        "函数优化（非凸/多峰/不可微）",
+        "TSP/VRP路线规划",
+        "参数标定",
+        "排产调度"
+      ],
+      "tips": "关键调参：种群大小(50-200)、交叉率(0.7-0.9)、变异率(0.01-0.1)。精英保留策略能加速收敛。约束问题用罚函数法。"
+    },
+    {
+      "name": "模拟退火",
+      "brief": "模拟物理退火过程，以一定概率接受劣解跳出局部最优",
+      "description": "模拟退火（Simulated Annealing, SA）由 Kirkpatrick 等人于1983年提出，灵感来自固体物理中的退火过程——加热金属到高温后缓慢冷却，原子达到最低能量态。算法从高温开始，以概率 exp(-Delta_E/T) 接受劣解（Metropolis准则），温度T逐步降低，接受劣解的概率也逐渐变小，最终收敛到全局最优。SA理论上能以概率1收敛到全局最优，适合离散/组合优化。",
+      "formulas": [
+        {
+          "name": "Metropolis接受准则",
+          "latex": "P(accept) = 1 if Delta_E < 0 else exp(-Delta_E / T)",
+          "explanation": "Delta_E为目标差。T高时大概率接受劣解（探索），T低时几乎只接受优解（开采）。"
+        },
+        {
+          "name": "指数冷却",
+          "latex": "T_{k+1} = alpha * T_k, alpha in (0.7, 0.99)",
+          "explanation": "alpha越接近1冷却越慢、搜索越充分但耗时越长。"
+        }
+      ],
+      "code": "\"\"\"模拟退火 - 求解TSP问题\"\"\"\nimport numpy as np\n\nnp.random.seed(42)\nN = 30; cities = np.random.rand(N, 2) * 100\n\ndef total_dist(route):\n    return sum(np.linalg.norm(cities[route[i]]-cities[route[(i+1)%N]]) for i in range(N))\n\nroute = list(range(N)); np.random.shuffle(route)\ncurr_d = total_dist(route)\nbest_route, best_d = route[:], curr_d\nT = 1000\n\nwhile T > 0.01:\n    i, j = sorted(np.random.choice(N, 2, replace=False))\n    new = route[:i] + route[i:j+1][::-1] + route[j+1:]\n    new_d = total_dist(new)\n    if new_d < curr_d or np.random.rand() < np.exp(-(new_d-curr_d)/T):\n        route, curr_d = new, new_d\n        if curr_d < best_d:\n            best_route, best_d = route[:], curr_d\n    T *= 0.995\n\nprint(f\"最短距离: {best_d:.1f}\")",
+      "steps": [
+        "随机生成初始解 x0，设初始高温 T0",
+        "在当前解邻域随机产生新解 x_prime",
+        "计算Delta_E = f(x_prime) - f(x)",
+        "若Delta_E<0接受新解；否则以概率exp(-Delta_E/T)接受",
+        "降温T = alpha*T，回到步骤2直到T足够小"
+      ],
+      "useCases": [
+        "旅行商问题（TSP）",
+        "VLSI电路布局",
+        "作业车间调度",
+        "图像恢复"
+      ],
+      "tips": "初始温度要足够高使接受率>0.8，冷却速率alpha选0.9-0.99。可与2-opt等局部搜索结合。"
+    },
+    {
+      "name": "粒子群优化",
+      "brief": "模拟鸟群觅食的群体智能算法，粒子共享信息协同搜索",
+      "description": "粒子群优化（Particle Swarm Optimization, PSO）由 Kennedy 和 Eberhart 于1995年提出，灵感来自鸟群或鱼群的群体觅食行为。每个粒子代表一个候选解，在搜索空间中飞行。粒子的速度更新同时受自身历史最佳位置（pbest，认知分量）和群体全局最佳位置（gbest，社会分量）的影响。PSO参数少、收敛快、易实现，是连续优化问题的首选元启发式算法之一。",
+      "formulas": [
+        {
+          "name": "速度更新方程",
+          "latex": "v_i = w*v_i + c1*r1*(p_i-x_i) + c2*r2*(g-x_i)",
+          "explanation": "w为惯性权重（平衡探索与开发），c1/c2为学习因子，r1/r2为[0,1]随机数，p_i为个体最优，g为全局最优。"
+        },
+        {
+          "name": "位置更新",
+          "latex": "x_i = x_i + v_i",
+          "explanation": "粒子沿速度方向移动，通常对位置施加边界约束。"
+        }
+      ],
+      "code": "\"\"\"粒子群优化 - Ackley函数\"\"\"\nimport numpy as np\n\ndef ackley(x):\n    n = len(x)\n    return -20*np.exp(-0.2*np.sqrt(np.mean(x**2))) - np.exp(np.mean(np.cos(2*np.pi*x))) + 20 + np.e\n\nn_p, dim = 50, 10\nx = np.random.uniform(-32, 32, (n_p, dim))\nv = np.random.uniform(-1, 1, (n_p, dim))\npbest_x = x.copy()\npbest_f = np.array([ackley(xi) for xi in x])\ngbest_x = x[np.argmin(pbest_f)].copy()\n\nfor t in range(200):\n    r1, r2 = np.random.rand(n_p, dim), np.random.rand(n_p, dim)\n    v = 0.7*v + 1.5*r1*(pbest_x-x) + 1.5*r2*(gbest_x-x)\n    x = np.clip(x + v, -32, 32)\n    f = np.array([ackley(xi) for xi in x])\n    better = f < pbest_f\n    pbest_x[better] = x[better]; pbest_f[better] = f[better]\n    if pbest_f.min() < pbest_f.min():\n        gbest_x = pbest_x[np.argmin(pbest_f)].copy()\n\nprint(f\"最优值: {pbest_f.min():.6f} (理论最小值=0)\")",
+      "steps": [
+        "初始化粒子群：随机位置 x_i 和速度 v_i",
+        "评估每个粒子的适应度",
+        "更新个体最优（pbest）和全局最优（gbest）",
+        "按速度更新方程计算每个粒子的新速度",
+        "更新粒子位置，施加边界约束",
+        "重复步骤2-5直到迭代完成或收敛"
+      ],
+      "useCases": [
+        "连续函数优化",
+        "神经网络权重训练",
+        "PID控制器参数整定",
+        "天线阵列优化"
+      ],
+      "tips": "惯性权重w建议从0.9线性递减到0.4（动态权重比固定权重效果好）。多目标优化用MOPSO。约束问题用罚函数法。"
+    }
+  ]
+}

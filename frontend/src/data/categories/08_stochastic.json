@@ -1,0 +1,74 @@
+{
+  "id": "stochastic",
+  "name": "随机模型",
+  "color": "#168CFF",
+  "description": "引入随机性和概率分布描述系统中的不确定性，包括蒙特卡洛模拟、马尔可夫链等。",
+  "definition": "随机模型与确定性模型相对，显式引入随机变量和概率分布来描述系统的不确定性。核心思想是通过大量随机采样或概率转移来推断系统的统计行为。广泛应用于金融风险、排队系统、可靠性工程等领域。",
+  "algorithms": [
+    {
+      "name": "蒙特卡洛模拟",
+      "brief": "通过大量随机采样近似计算确定性问题的数值解",
+      "description": "蒙特卡洛方法（Monte Carlo）由 Ulam 和 von Neumann 于1940年代在曼哈顿计划中发展。核心思想：用大量随机样本的统计量近似确定性量。经典例子是用随机投点估计pi值。广泛应用于积分计算、风险分析(VaR)、物理模拟、优化等领域。误差收敛速度为 O(1/sqrt(N))，与维度无关——这是蒙特卡洛在高维问题中的独特优势。",
+      "formulas": [
+        {
+          "name": "MC积分估计",
+          "latex": "I \\approx (b-a)/N * sum_{i=1}^N f(X_i), X_i ~ U(a,b)",
+          "explanation": "在[a,b]区间均匀采样N个点，用样本均值近似积分。高维积分MC方法远优于数值积分。"
+        },
+        {
+          "name": "误差界",
+          "latex": "|error| \\approx sigma / sqrt(N)",
+          "explanation": "sigma为f的标准差。精度正比于1/sqrt(N)，要提高1位小数需100倍样本。"
+        }
+      ],
+      "code": "\"\"\"蒙特卡洛 - pi估计 + VaR风险分析\"\"\"\nimport numpy as np\n\n# 1. 投点法估计pi\nN = 100_000\nx, y = np.random.uniform(-1, 1, N), np.random.uniform(-1, 1, N)\ninside = x**2 + y**2 <= 1\npi_est = 4 * inside.sum() / N\nprint(f\"pi估计: {pi_est:.6f} (误差: {abs(pi_est-np.pi):.6f})\")\n\n# 2. VaR (Value at Risk) 投资风险分析\nnp.random.seed(42)\nreturns = np.random.normal(0.001, 0.02, (10000, 252))  # 10000个情景,252个交易日\nannual_returns = (1 + returns).prod(axis=1) - 1\nVaR_95 = np.percentile(annual_returns, 5)\nprint(f\"95% VaR: {VaR_95:.2%} (有95%把握年损失不超过{-VaR_95:.2%})\")",
+      "steps": [
+        "定义输入随机变量的概率分布",
+        "从分布中大量采样（N>=10000）",
+        "将每组样本代入模型计算输出",
+        "汇总输出分布（均值/分位数/直方图）",
+        "分析结果的统计精度（标准误差）"
+      ],
+      "useCases": [
+        "金融风险VaR/CVaR计算",
+        "定积分/高维积分",
+        "物理粒子输运模拟",
+        "项目工期风险评估(PERT)"
+      ],
+      "tips": "样本量N越大精度越高（误差~1/sqrt(N)）。使用拉丁超立方采样或Sobol序列（拟蒙特卡洛）可加速收敛。对于罕见事件概率估计，用重要性采样。"
+    },
+    {
+      "name": "MCMC",
+      "brief": "马尔可夫链蒙特卡洛，从复杂后验分布中采样的核心工具",
+      "description": "MCMC（Markov Chain Monte Carlo）是贝叶斯统计计算的核心工具。当后验分布P(theta|D)没有解析形式时，MCMC通过构造一条以目标分布为平稳分布的马尔可夫链来采样。Metropolis-Hastings算法是MCMC的基础：提议新状态→以概率 min(1, (后验比)*(提议比)) 接受→链收敛后样本近似来自目标分布。",
+      "formulas": [
+        {
+          "name": "MH接受概率",
+          "latex": "alpha = min(1, P(theta_new|D)/P(theta_old|D) * q(theta_old|theta_new)/q(theta_new|theta_old))",
+          "explanation": "第一项为后验比（似然比×先验比），第二项为提议比（非对称提议时需调整）。对称提议时仅为后验比。"
+        },
+        {
+          "name": "Gelman-Rubin收敛诊断",
+          "latex": "R_hat = sqrt( (W + B/W) / W ) < 1.1",
+          "explanation": "多链比较：W为链内方差，B为链间方差。R_hat接近1说明链已收敛。"
+        }
+      ],
+      "code": "\"\"\"MCMC - Metropolis-Hastings估计正态均值后验\"\"\"\nimport numpy as np\nfrom scipy import stats\n\n# 数据: 观测值\nnp.random.seed(42)\ndata = np.random.normal(5, 2, 50)  # 真实均值=5, 标准差=2\n\n# MCMC采样\nn_iter = 20000\nchain = np.zeros(n_iter)\ncurrent = np.mean(data)  # 初始值\n\nfor i in range(n_iter):\n    # 提议：从正态分布中采样新值\n    proposal = current + np.random.normal(0, 0.5)\n    # 计算对数后验 (已知方差=4, 先验~N(0,10))\n    def log_posterior(mu):\n        log_lik = np.sum(stats.norm.logpdf(data, mu, 2))\n        log_prior = stats.norm.logpdf(mu, 0, 10)\n        return log_lik + log_prior\n    # MH接受/拒绝\n    log_alpha = log_posterior(proposal) - log_posterior(current)\n    if np.log(np.random.rand()) < log_alpha:\n        current = proposal\n    chain[i] = current\n\n# 后验分析（去除burn-in）\nburn_in = 2000\nposterior = chain[burn_in:]\nprint(f\"后验均值: {posterior.mean():.3f}\")\nprint(f\"95%可信区间: [{np.percentile(posterior, 2.5):.3f}, {np.percentile(posterior, 97.5):.3f}]\")",
+      "steps": [
+        "定义目标分布（后验=似然×先验）",
+        "选择提议分布（常用正态随机游走）",
+        "采样：提议新状态→计算接受概率→接受/拒绝",
+        "预烧期(burn-in)：丢弃前若干迭代（链未收敛）",
+        "收敛诊断：多链R_hat、迹图、自相关图",
+        "后验分析：基于后验样本计算均值/分位数等"
+      ],
+      "useCases": [
+        "贝叶斯参数估计",
+        "复杂后验分布采样",
+        "隐变量模型推断",
+        "物理系统配分函数估计"
+      ],
+      "tips": "提议步长至关重要：太大接受率低（链不动），太小探索慢。目标接受率：单变量~0.44，多变量~0.23。实际应用推荐使用PyMC/Stan（自动调优+诊断）。"
+    }
+  ]
+}

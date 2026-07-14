@@ -1,0 +1,106 @@
+{
+  "id": "evaluation",
+  "name": "评价模型",
+  "color": "#FF7D00",
+  "description": "建立评价指标体系，对多个备选方案进行综合排序或优劣判断。",
+  "definition": "评价模型用于对多个对象或方案进行综合评判和排序。核心步骤：建立评价指标体系→指标标准化（无量纲化）→确定权重→综合评分与排序。广泛应用于供应商选择、绩效评估、城市排名等场景。",
+  "algorithms": [
+    {
+      "name": "TOPSIS",
+      "brief": "逼近理想解排序法，根据方案与正负理想解的距离进行排序",
+      "description": "TOPSIS（Technique for Order Preference by Similarity to Ideal Solution）由 Hwang 和 Yoon 于1981年提出。核心思想：最优方案应同时最接近正理想解（各指标最优值）且最远离负理想解（各指标最差值）。通过计算每个方案的相对贴近度进行排序，贴近度越接近1越好。TOPSIS对样本量和指标数无严格限制，计算简单直观。",
+      "formulas": [
+        {
+          "name": "贴近度计算",
+          "latex": "S_i = D_i^- / (D_i^+ + D_i^-)",
+          "explanation": "D_i+为方案i到正理想解的欧氏距离，D_i-为到负理想解的距离。S_i在[0,1]之间，越接近1越优。"
+        },
+        {
+          "name": "加权距离",
+          "latex": "D_i^+ = sqrt(sum_j w_j*(z_{ij}-z_j^+)^2)",
+          "explanation": "w_j为第j个指标的权重（可用熵权法/AHP确定），z_{ij}为标准化后的指标值。"
+        }
+      ],
+      "code": "\"\"\"TOPSIS综合评价 - 供应商选择\"\"\"\nimport numpy as np\n\n# 5个供应商×4个指标（价格、质量、交货准时率、售后服务）\ndata = np.array([\n    [120, 0.85, 0.92, 0.78],\n    [100, 0.90, 0.88, 0.85],\n    [135, 0.82, 0.95, 0.72],\n    [110, 0.88, 0.85, 0.90],\n    [125, 0.86, 0.90, 0.80],\n])\ndirections = [-1, 1, 1, 1]  # -1成本型，1效益型\n\n# 正向化\nX = data.copy()\nfor j, d in enumerate(directions):\n    if d == -1:\n        X[:, j] = X[:, j].max() - X[:, j]\n\n# 向量归一化\nX_norm = X / np.sqrt((X**2).sum(axis=0))\n\n# 熵权法\np = X_norm / X_norm.sum(axis=0)\nE = -np.sum(p * np.log(p + 1e-10), axis=0) / np.log(len(X_norm))\nw = (1 - E) / (1 - E).sum()\nprint(f\"权重: {w.round(4)}\")\n\n# TOPSIS\nbest = np.max(X_norm * w, axis=0)\nworst = np.min(X_norm * w, axis=0)\nd_best = np.sqrt(((X_norm * w - best)**2).sum(axis=1))\nd_worst = np.sqrt(((X_norm * w - worst)**2).sum(axis=1))\nS = d_worst / (d_best + d_worst)\nrank = np.argsort(-S) + 1\nfor i, r in enumerate(rank):\n    print(f\"排名{r}: 供应商{i+1} (贴近度={S[i]:.4f})\")",
+      "steps": [
+        "建立评价矩阵：m个方案×n个指标",
+        "指标正向化：成本型指标转化为效益型",
+        "标准化消除量纲（向量归一化或极差变换）",
+        "确定权重（熵权法/AHP/CRITIC）",
+        "计算加权标准化矩阵",
+        "确定正/负理想解",
+        "计算各方案贴近度并排序"
+      ],
+      "useCases": [
+        "供应商/合作伙伴选择",
+        "城市宜居度排名",
+        "投资项目评估",
+        "教学质量评估"
+      ],
+      "tips": "TOPSIS要求指标间独立（无强相关性）。当指标数远大于方案数时，先用PCA降维。结合熵权法可实现完全客观评价。"
+    },
+    {
+      "name": "熵权法",
+      "brief": "基于数据信息熵的客观赋权方法，指标差异越大权重越高",
+      "description": "熵权法的核心思想来自信息论：信息熵衡量数据的不确定性。某个指标下各方案的数值差异越大（信息熵越小），说明该指标提供的区分信息越多，权重应越高。反之，若各方案在某指标上数值相同（熵=1），则该指标对区分方案无贡献，权重为0。熵权法完全基于数据本身，避免了主观偏差。",
+      "formulas": [
+        {
+          "name": "信息熵",
+          "latex": "E_j = -(1/ln m) * sum_i p_{ij} * ln(p_{ij})",
+          "explanation": "m为方案数，p_{ij}为第i个方案在第j个指标上的比重。E_j在[0,1]之间，越小信息量越大。"
+        },
+        {
+          "name": "熵权",
+          "latex": "w_j = (1 - E_j) / sum_k (1 - E_k)",
+          "explanation": "1-E_j为信息效用值。权重之和为1。"
+        }
+      ],
+      "code": "\"\"\"熵权法 - 客观权重计算\"\"\"\nimport numpy as np\n\n# 标准化评价矩阵 (5方案×4指标)\nX = np.array([\n    [0.8, 0.6, 0.9, 0.7],\n    [0.9, 0.8, 0.7, 0.9],\n    [0.6, 0.9, 0.8, 0.6],\n    [0.7, 0.7, 0.9, 0.8],\n    [0.9, 0.5, 0.6, 0.9],\n])\n\n# 计算比重矩阵\nP = X / X.sum(axis=0)\n\n# 计算各指标信息熵\nn = len(X)\nE = -np.sum(P * np.log(P + 1e-10), axis=0) / np.log(n)\n\n# 熵权\nW = (1 - E) / (1 - E).sum()\nfor j, (e, w) in enumerate(zip(E, W)):\n    print(f\"指标{j+1}: 熵={e:.4f}, 权重={w:.4f}\")",
+      "steps": [
+        "指标标准化（消除量纲和正负向差异）",
+        "计算各方案在各指标下的比重p_{ij}",
+        "计算每个指标的信息熵E_j",
+        "计算信息效用值d_j=1-E_j",
+        "归一化得到权重w_j=d_j/sum(d_j)"
+      ],
+      "useCases": [
+        "多指标综合评价中的权重确定",
+        "与TOPSIS/VIKOR等方法配合使用",
+        "特征筛选（剔除低权重指标）"
+      ],
+      "tips": "熵权法要求各指标值非负。需先处理负向指标（正向化）。所有方案在某指标上相等时熵为1、权重为0，这是合理的（该指标无区分力）。"
+    },
+    {
+      "name": "AHP层次分析法",
+      "brief": "通过两两比较构建判断矩阵，将主观判断量化为权重",
+      "description": "AHP（Analytic Hierarchy Process）由 Thomas Saaty 于1970年代提出。核心是将复杂决策问题分解为目标层→准则层→方案层三个层次，通过两两比较（1-9标度法）构建判断矩阵，计算特征向量得到权重，并通过一致性比率CR检验判断的合理性。AHP适合指标数量较少（<9个）且需要融合专家经验的主观评价场景。",
+      "formulas": [
+        {
+          "name": "两两比较矩阵",
+          "latex": "A = [a_{ij}], a_{ij}=1/a_{ji}, a_{ii}=1",
+          "explanation": "a_{ij}表示指标i相对j的重要性（1=同等，3=稍重要，5=明显重要，7=强烈重要，9=极端重要）。"
+        },
+        {
+          "name": "一致性检验",
+          "latex": "CR = CI/RI, CI=(lambda_max-n)/(n-1)",
+          "explanation": "lambda_max为最大特征值，n为矩阵阶数，RI为随机一致性指标。CR<0.1通过检验。"
+        }
+      ],
+      "code": "\"\"\"AHP层次分析法\"\"\"\nimport numpy as np\n\n# 判断矩阵（4个指标的两两比较）\nA = np.array([\n    [1,   3,   5,   7],\n    [1/3, 1,   3,   5],\n    [1/5, 1/3, 1,   3],\n    [1/7, 1/5, 1/3, 1],\n])\n\n# 特征向量法求权重（和积法）\ncol_sum = A.sum(axis=0)\nB = A / col_sum  # 归一化\nw = B.mean(axis=1)  # 行平均=权重\n\n# 一致性检验\nn = len(A)\nlambda_max = ((A @ w) / w).mean()\nCI = (lambda_max - n) / (n - 1)\nRI_dict = {1:0, 2:0, 3:0.58, 4:0.90, 5:1.12, 6:1.24, 7:1.32, 8:1.41}\nCR = CI / RI_dict[n]\n\nprint(f\"权重: {w.round(4)}\")\nprint(f\"lambda_max={lambda_max:.4f}, CI={CI:.4f}, CR={CR:.4f}\")\nprint(\"一致性检验:\" + (\"通过\" if CR < 0.1 else \"不通过\"))",
+      "steps": [
+        "建立递阶层次结构（目标-准则-方案）",
+        "构造两两比较判断矩阵（1-9标度）",
+        "计算权重向量（特征向量法/和积法）",
+        "一致性检验（CR<0.1通过）",
+        "层次总排序（各层权重合成）"
+      ],
+      "useCases": [
+        "供应商选择",
+        "投资决策",
+        "人才评价",
+        "政策方案评估"
+      ],
+      "tips": "每层指标数不超过9个（超过会导致判断不一致）。多位专家打分时取几何平均。CR>0.1需重新调整判断矩阵。AHP可与其他方法结合（AHP-TOPSIS）。"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "id": "graph-theory",
+  "name": "图论与网络",
+  "color": "#F7BA1E",
+  "description": "用节点和边抽象表示实体间的关系，研究网络结构、路径优化和传播动力学。",
+  "definition": "图论模型将现实世界中的实体抽象为节点（顶点），关系抽象为边。通过研究图的拓扑性质和算法，解决路径规划、网络优化、社区发现等问题。在交通、社交网络、通信等领域有广泛应用。",
+  "algorithms": [
+    {
+      "name": "Dijkstra算法",
+      "brief": "求单源最短路径的贪心算法，要求边权非负",
+      "description": "Dijkstra算法由 Edsger Dijkstra 于1956年提出，是图论中最著名的算法之一。采用贪心策略：维护已确定最短距离的节点集合S，每次从未处理的节点中选择距离源点最近的节点加入S，并松弛其邻居的距离。使用优先队列（堆）可将复杂度优化到 O((V+E)log V)。",
+      "formulas": [
+        {
+          "name": "松弛操作",
+          "latex": "d[v] = min(d[v], d[u] + w(u,v))",
+          "explanation": "若通过u到v的距离比已知的d[v]更短，则更新。这是所有最短路径算法的核心操作。"
+        }
+      ],
+      "code": "\"\"\"Dijkstra最短路径\"\"\"\nimport networkx as nx\n\nG = nx.Graph()\nedges = [(\"A\",\"B\",5), (\"A\",\"C\",3), (\"B\",\"D\",2), (\"D\",\"F\",8), (\"E\",\"F\",2)]\nfor u, v, w in edges:\n    G.add_edge(u, v, weight=w)\n\npath = nx.dijkstra_path(G, \"A\", \"F\", weight=\"weight\")\ndist = nx.dijkstra_path_length(G, \"A\", \"F\", weight=\"weight\")\nprint(\"最短路径:\", \" -> \".join(path), \"距离=\", dist)",
+      "steps": [
+        "初始化：源点距离=0，其他=无穷，所有节点未访问",
+        "选择未访问节点中距离最小的u",
+        "标记u为已访问",
+        "对u的每个邻居v：若d[u]+w(u,v) < d[v]，更新d[v]",
+        "重复2-4直到目标节点被访问"
+      ],
+      "useCases": [
+        "地图导航（GPS路径规划）",
+        "网络路由协议（OSPF）",
+        "游戏AI寻路",
+        "物流配送路径优化"
+      ],
+      "tips": "边权必须非负！负权边用Bellman-Ford算法。稠密图用邻接矩阵（O(V^2)），稀疏图用堆优化（O(E log V)）。NetworkX提供了完整实现。"
+    },
+    {
+      "name": "PageRank",
+      "brief": "Google创始算法，通过随机游走模型评估节点重要性",
+      "description": "PageRank由 Larry Page 和 Sergey Brin 于1998年提出，是Google搜索引擎的基石。核心思想：一个网页的重要性取决于链接到它的其他网页的数量和质量。从随机冲浪模型出发，用户以概率d点击链接、以概率1-d随机跳转，平稳分布即为PageRank值。PageRank本质是图的平稳分布，可通过幂迭代求解。",
+      "formulas": [
+        {
+          "name": "PageRank迭代公式",
+          "latex": "PR(p_i) = (1-d)/N + d * sum_{p_j in M(p_i)} PR(p_j)/L(p_j)",
+          "explanation": "d为阻尼系数（通常0.85），M(p_i)为链接到p_i的页面集合，L(p_j)为p_j的出链数。"
+        }
+      ],
+      "code": "\"\"\"PageRank - 社交网络影响力分析\"\"\"\nimport numpy as np\nimport networkx as nx\n\n# 创建社交网络\nG = nx.DiGraph()\nedges = [\n    (1,2), (2,3), (3,1),  # 三角形\n    (1,4), (4,5), (5,6), (6,4),  # 另一个圈子\n    (3,4)  # 桥梁\n]\nG.add_edges_from(edges)\n\npr = nx.pagerank(G, alpha=0.85)\nfor node, score in sorted(pr.items(), key=lambda x: -x[1]):\n    print(f\"节点{node}: PageRank={score:.4f}\")",
+      "steps": [
+        "构建有向图（节点=网页/用户，边=链接/关注关系）",
+        "初始化所有节点PR值为1/N",
+        "迭代更新：新PR = (1-d)/N + d*sum(入链PR/出度数)",
+        "重复直到收敛（PR变化<阈值）"
+      ],
+      "useCases": [
+        "搜索引擎网页排序",
+        "社交网络意见领袖识别",
+        "学术论文引用分析",
+        "蛋白质相互作用网络关键蛋白识别"
+      ],
+      "tips": "阻尼系数d通常取0.85。死胡同节点（无出链）需特殊处理。对于无向图，PageRank退化为度中心性。NetworkX的pagerank函数支持个性化向量。"
+    }
+  ]
+}

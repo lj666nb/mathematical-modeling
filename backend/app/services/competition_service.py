@@ -1943,7 +1943,7 @@ class CompetitionService:
         return profiles
 
     def _profile_single_file(self, path: Path, task_id: int) -> dict:
-        """画像单个数据文件"""
+        """画像单个数据文件（含行数 + 前5行数据预览）"""
         suffix = path.suffix.lower().lstrip(".")
         role = "主建模数据" if "problem_files" in path.parts else "补充数据"
         stem = path.stem
@@ -1956,6 +1956,8 @@ class CompetitionService:
             "numeric_columns": [],
             "categorical_columns": [],
             "role": role,
+            "rows": 0,
+            "sample_rows": [],
             "cleaned_output": f"paper_output/{task_id}/data_cleaned/{stem}_cleaned.csv",
             "cleaning_tasks": ["缺失值检查", "字段类型转换", "异常值检查", "重复记录检查"],
         }
@@ -1976,11 +1978,19 @@ class CompetitionService:
                             header = next(reader, [])
                             columns = [str(c).strip() for c in header if str(c).strip()]
                             if columns:
-                                numeric_cols, cat_cols = self._classify_columns_csv(reader, columns)
+                                # 读取全部行（收集样本 + 计行数）
+                                all_rows = list(reader)
+                                numeric_cols, cat_cols = self._classify_columns_csv_from_rows(columns, all_rows)
                                 profile["readable"] = True
                                 profile["columns"] = columns
                                 profile["numeric_columns"] = numeric_cols
                                 profile["categorical_columns"] = cat_cols
+                                profile["rows"] = len(all_rows)
+                                # 前5行数据预览
+                                profile["sample_rows"] = [
+                                    [str(v) if v is not None else "" for v in row]
+                                    for row in all_rows[:5]
+                                ]
                             break
                     except Exception:
                         continue
@@ -1995,13 +2005,13 @@ class CompetitionService:
                     xls = pd.ExcelFile(path, engine="openpyxl")
                 else:
                     xls = pd.ExcelFile(path, engine="xlrd")
-                # 读第一个 sheet
+                # 读第一个 sheet — 先读前10行用于列信息，再统计总行数
                 sheet_name = xls.sheet_names[0]
-                df = pd.read_excel(xls, sheet_name=sheet_name, nrows=10)
-                if not df.empty and len(df.columns) > 0:
-                    columns = [str(c).strip() for c in df.columns if str(c).strip()]
-                    numeric_cols = [str(c) for c in df.select_dtypes(include="number").columns]
-                    cat_cols = [str(c) for c in df.select_dtypes(exclude="number").columns]
+                df_sample = pd.read_excel(xls, sheet_name=sheet_name, nrows=10)
+                if not df_sample.empty and len(df_sample.columns) > 0:
+                    columns = [str(c).strip() for c in df_sample.columns if str(c).strip()]
+                    numeric_cols = [str(c) for c in df_sample.select_dtypes(include="number").columns]
+                    cat_cols = [str(c) for c in df_sample.select_dtypes(exclude="number").columns]
                     profile["readable"] = True
                     profile["columns"] = columns
                     profile["numeric_columns"] = numeric_cols
@@ -2009,10 +2019,41 @@ class CompetitionService:
                     # 多 sheet 信息
                     if len(xls.sheet_names) > 1:
                         profile["sheets"] = xls.sheet_names
+                    # 读全量数据获取行数 + 样本
+                    df_full = pd.read_excel(xls, sheet_name=sheet_name)
+                    profile["rows"] = len(df_full)
+                    # 前5行数据预览（转为字符串列表）
+                    sample_df = df_full.head(5)
+                    profile["sample_rows"] = [
+                        [str(v) if pd.notna(v) else "" for v in row]
+                        for row in sample_df.values.tolist()
+                    ]
             except Exception:
                 pass
 
         return profile
+
+    def _classify_columns_csv_from_rows(self, columns: list[str], rows: list) -> tuple[list[str], list[str]]:
+        """从已读取的CSV行分类数值列/分类列"""
+        numeric_cols: list[str] = []
+        cat_cols: list[str] = []
+        if rows:
+            for ci, col in enumerate(columns):
+                vals = [r[ci] for r in rows if ci < len(r) and r[ci] and str(r[ci]).strip()]
+                nums = 0
+                for v in vals:
+                    try:
+                        float(str(v).replace(",", ""))
+                        nums += 1
+                    except Exception:
+                        pass
+                if vals and nums / len(vals) >= 0.5:
+                    numeric_cols.append(col)
+                else:
+                    cat_cols.append(col)
+        else:
+            cat_cols = [c for c in columns]
+        return numeric_cols, cat_cols
 
     def _classify_columns_csv(self, reader, columns: list[str]) -> tuple[list[str], list[str]]:
         """从CSV reader分类数值列/分类列"""

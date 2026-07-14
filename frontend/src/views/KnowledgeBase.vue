@@ -140,21 +140,21 @@
                 <div>
                   <h2 class="kb-section-name">{{ currentAlgoName }}</h2>
                   <p class="kb-section-meta">
-                    {{ currentAlgoCat.name }} · {{ currentAlgoCat.algorithms?.length || 0 }} 种算法
+                    {{ currentAlgoCat.name }} · {{ currentAlgoNote?.brief || '' }}
                   </p>
                 </div>
               </div>
 
-              <!-- 关联场景 -->
-              <div v-if="currentAlgoScenario" class="doc-blockquote" style="margin-top:12px;">
-                <p><strong>📋 适用场景</strong></p>
-                <p>{{ currentAlgoScenario }}</p>
+              <!-- 算法详细描述 (本地笔记) -->
+              <div v-if="currentAlgoNote" class="doc-blockquote" style="margin-top:12px;">
+                <p><strong>📖 算法原理</strong></p>
+                <p style="line-height:1.8;">{{ currentAlgoNote.description }}</p>
               </div>
 
-              <!-- 核心公式 (KaTeX) -->
-              <template v-if="currentAlgoCat.core_formulas?.length">
+              <!-- 核心公式 (来自本地笔记) -->
+              <template v-if="currentAlgoNote?.formulas?.length">
                 <h3 class="doc-section-subtitle">📐 核心公式</h3>
-                <div v-for="(f, fi) in currentAlgoCat.core_formulas" :key="fi" class="doc-formula-card">
+                <div v-for="(f, fi) in currentAlgoNote.formulas" :key="fi" class="doc-formula-card">
                   <div class="formula-name">{{ f.name }}</div>
                   <div class="formula-latex">
                     <KatexFormula :latex="f.latex" :display-mode="true" />
@@ -163,29 +163,43 @@
                 </div>
               </template>
 
-              <!-- 经典例题 -->
-              <template v-if="currentAlgoCat.example">
-                <h3 class="doc-section-subtitle">💡 经典例题：{{ currentAlgoCat.example.title }}</h3>
-                <div class="doc-blockquote">
-                  <p><strong>📋 问题描述</strong></p>
-                  <p>{{ currentAlgoCat.example.problem }}</p>
-                  <p style="margin-top:12px;"><strong>🔬 解题思路</strong></p>
-                  <p>{{ currentAlgoCat.example.solution }}</p>
+              <!-- 实现步骤 -->
+              <template v-if="currentAlgoNote?.steps?.length">
+                <h3 class="doc-section-subtitle">📋 实现步骤</h3>
+                <ol style="padding-left:20px;">
+                  <li v-for="(s, si) in currentAlgoNote.steps" :key="si"
+                      style="font-size:var(--text-sm);color:var(--text-secondary);line-height:2;">{{ s }}</li>
+                </ol>
+              </template>
+
+              <!-- 应用场景 -->
+              <template v-if="currentAlgoNote?.useCases?.length">
+                <h3 class="doc-section-subtitle">🎯 适用场景</h3>
+                <div class="doc-tag-group">
+                  <el-tag v-for="(u, ui) in currentAlgoNote.useCases" :key="ui" size="small" effect="plain" round type="success">{{ u }}</el-tag>
                 </div>
               </template>
 
-              <!-- 代码模板 -->
-              <template v-if="currentAlgoCat.code_template">
-                <h3 class="doc-section-subtitle">💻 Python 代码模板</h3>
+              <!-- 代码模板 (来自本地笔记) -->
+              <template v-if="currentAlgoNote?.code">
+                <h3 class="doc-section-subtitle">💻 Python 代码示例</h3>
                 <div style="display:flex;gap:8px;margin-bottom:8px;">
-                  <el-button size="small" text @click="copyCode(currentAlgoCat.code_template)">
+                  <el-button size="small" text @click="copyCode(currentAlgoNote.code)">
                     <el-icon><CopyDocument /></el-icon>复制代码
                   </el-button>
-                  <el-button size="small" type="primary" round @click="openInEditor(currentAlgoCat.code_template)">
+                  <el-button size="small" type="primary" round @click="openInEditor(currentAlgoNote.code)">
                     <el-icon><Edit /></el-icon>在编辑器中打开
                   </el-button>
                 </div>
-                <pre class="doc-code-block"><code>{{ currentAlgoCat.code_template }}</code></pre>
+                <pre class="doc-code-block"><code>{{ currentAlgoNote.code }}</code></pre>
+              </template>
+
+              <!-- 实用技巧 -->
+              <template v-if="currentAlgoNote?.tips">
+                <h3 class="doc-section-subtitle">💡 实用技巧</h3>
+                <div class="doc-blockquote">
+                  <p>{{ currentAlgoNote.tips }}</p>
+                </div>
               </template>
 
               <!-- 同类算法 -->
@@ -204,6 +218,36 @@
                     {{ a }}
                   </el-tag>
                 </div>
+              </template>
+
+              <!-- 无本地笔记时的回退显示（使用后端数据） -->
+              <template v-if="!currentAlgoNote">
+                <div v-if="currentAlgoScenario" class="doc-blockquote" style="margin-top:12px;">
+                  <p><strong>📋 适用场景</strong></p>
+                  <p>{{ currentAlgoScenario }}</p>
+                </div>
+                <template v-if="currentAlgoCat.core_formulas?.length">
+                  <h3 class="doc-section-subtitle">📐 核心公式</h3>
+                  <div v-for="(f, fi) in currentAlgoCat.core_formulas" :key="fi" class="doc-formula-card">
+                    <div class="formula-name">{{ f.name }}</div>
+                    <div class="formula-latex">
+                      <KatexFormula :latex="f.latex" :display-mode="true" />
+                    </div>
+                    <div class="formula-desc">{{ f.explanation }}</div>
+                  </div>
+                </template>
+                <template v-if="currentAlgoCat.code_template">
+                  <h3 class="doc-section-subtitle">💻 Python 代码模板</h3>
+                  <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <el-button size="small" text @click="copyCode(currentAlgoCat.code_template)">
+                      <el-icon><CopyDocument /></el-icon>复制代码
+                    </el-button>
+                    <el-button size="small" type="primary" round @click="openInEditor(currentAlgoCat.code_template)">
+                      <el-icon><Edit /></el-icon>在编辑器中打开
+                    </el-button>
+                  </div>
+                  <pre class="doc-code-block"><code>{{ currentAlgoCat.code_template }}</code></pre>
+                </template>
               </template>
             </template>
 
@@ -436,6 +480,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { knowledgeApi } from '../api'
+import { getAlgorithmNote } from '../data/knowledgeBase.js'
 import Sidebar from '../components/Sidebar.vue'
 import DocLayout from '../components/DocLayout.vue'
 import KatexFormula from '../components/KatexFormula.vue'
@@ -489,6 +534,16 @@ const currentAlgoName = computed(() => {
 const currentAlgoScenario = computed(() => {
   if (!currentAlgoCat.value || selectedNode.value?.type !== 'algorithm') return ''
   return currentAlgoCat.value.scenarios?.[selectedNode.value.algorithmIndex] || ''
+})
+
+// 从本地硬编码知识库获取算法独立笔记
+const currentAlgoNote = computed(() => {
+  if (!currentAlgoCat.value || selectedNode.value?.type !== 'algorithm') return null
+  return getAlgorithmNote(
+    currentAlgoCat.value.id,
+    selectedNode.value.algorithmIndex,
+    currentAlgoName.value  // 优先按名称匹配
+  )
 })
 
 // —— 分类图标映射 ——

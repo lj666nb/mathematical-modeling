@@ -1,0 +1,105 @@
+{
+  "id": "statistics",
+  "name": "统计模型",
+  "color": "#0FC6C2",
+  "description": "基于概率统计理论，从数据中推断总体特征、检验假设、发现变量间关系。",
+  "definition": "统计模型运用概率论和数理统计方法，通过样本数据对总体进行推断。包括描述统计（数据概括）、推断统计（参数估计/假设检验）和关系建模（回归/方差分析）。是所有数据分析和建模的基础。",
+  "algorithms": [
+    {
+      "name": "OLS回归",
+      "brief": "最小二乘线性回归，通过最小化残差平方和估计回归系数",
+      "description": "普通最小二乘法（Ordinary Least Squares）是回归分析的基础。核心是通过最小化 sum(y_i - yhat_i)^2 来估计回归系数 beta。OLS有解析解 beta_hat = (X^T X)^{-1} X^T y，不需要迭代。OLS是BLUE（最佳线性无偏估计），前提是满足高斯-马尔可夫假设（线性、满秩、外生性、同方差、无自相关）。",
+      "formulas": [
+        {
+          "name": "OLS估计量",
+          "latex": "beta_hat = (X^T X)^{-1} X^T y",
+          "explanation": "最小化残差平方和的解析解。X需满秩（无完全共线性）。"
+        },
+        {
+          "name": "R方决定系数",
+          "latex": "R^2 = 1 - SS_res / SS_tot",
+          "explanation": "模型解释的变异比例，0~1之间。越高拟合越好但要注意过拟合。"
+        }
+      ],
+      "code": "\"\"\"OLS回归 - 房价预测\"\"\"\nimport numpy as np\nimport statsmodels.api as sm\n\nnp.random.seed(42)\nn = 200\narea = np.random.normal(120, 30, n)\nage = np.random.uniform(0, 30, n)\nrooms = np.random.randint(2, 6, n)\nprice = 50 + 2.5*area - 1.2*age + 15*rooms + np.random.normal(0, 20, n)\n\nX = sm.add_constant(np.column_stack([area, age, rooms]))\nmodel = sm.OLS(price, X).fit()\nprint(model.summary().tables[1])  # 系数表",
+      "steps": [
+        "探索性数据分析（散点图、相关性矩阵）",
+        "拟合OLS模型",
+        "检查残差（正态性、同方差、独立性）",
+        "检查多重共线性（VIF<10）",
+        "解释系数并做显著性检验"
+      ],
+      "useCases": [
+        "房价预测",
+        "销售影响因素分析",
+        "薪酬差异分析",
+        "实验数据分析"
+      ],
+      "tips": "使用statsmodels（提供完整统计推断）而非sklearn（侧重预测）。异方差时用稳健标准误（HC1/HC3）。离群值用Cook距离检测。"
+    },
+    {
+      "name": "主成分分析(PCA)",
+      "brief": "最常用的降维方法，将高维数据投影到方差最大的方向",
+      "description": "PCA（Principal Component Analysis）通过正交变换将可能相关的变量转换为线性无关的主成分。第一主成分捕获数据最大方差方向，第二主成分与第一正交且捕获剩余最大方差，以此类推。PCA可用于降维（保留前k个主成分）、可视化（降到2/3维）和去噪（丢弃小方差成分）。",
+      "formulas": [
+        {
+          "name": "协方差矩阵特征分解",
+          "latex": "Sigma = Q * Lambda * Q^T",
+          "explanation": "Lambda为特征值对角阵(方差)，Q的列为特征向量(主成分方向)。"
+        },
+        {
+          "name": "方差解释率",
+          "latex": "ratio_k = sum_{i=1}^k lambda_i / sum_{j=1}^p lambda_j",
+          "explanation": "前k个主成分解释的总方差比例。通常取累计>85%或通过碎石图肘点选k。"
+        }
+      ],
+      "code": "\"\"\"PCA降维与可视化\"\"\"\nimport numpy as np\nfrom sklearn.decomposition import PCA\nfrom sklearn.preprocessing import StandardScaler\n\n# 模拟高维数据\nnp.random.seed(42)\nX = np.random.randn(200, 10)\nX[:, 0] = X[:, 0]*3  # 第1个特征方差大\nX[:, 1] = X[:, 0]*0.8 + X[:, 1]*0.5  # 特征1和2相关\n\nX_scaled = StandardScaler().fit_transform(X)\n\n# PCA降维\npca = PCA()\npca.fit(X_scaled)\nprint(f\"各成分方差解释率: {pca.explained_variance_ratio_.round(4)}\")\nprint(f\"前3个成分累计: {pca.explained_variance_ratio_[:3].sum():.2%}\")",
+      "steps": [
+        "数据标准化（PCA对尺度敏感！）",
+        "计算协方差矩阵或直接SVD分解",
+        "按特征值大小排序，选择前k个主成分",
+        "将原始数据投影到主成分空间",
+        "可视化并解释主成分含义"
+      ],
+      "useCases": [
+        "高维数据可视化",
+        "特征降维/去噪",
+        "基因表达数据分析",
+        "问卷数据压缩"
+      ],
+      "tips": "必须先标准化！PCA对异常值敏感。主成分是原始特征的线性组合，解释性较差——可用载荷矩阵辅助理解。对于非线性结构，用t-SNE/UMAP。"
+    },
+    {
+      "name": "贝叶斯推断",
+      "brief": "基于贝叶斯定理的统计推断方法，融合先验知识和观测数据",
+      "description": "贝叶斯推断与频率学派的核心区别在于将参数视为随机变量（有概率分布）。通过贝叶斯定理 P(theta|D) = P(D|theta)*P(theta)/P(D) 将先验信念P(theta)与数据似然P(D|theta)结合，得到后验分布P(theta|D)。贝叶斯方法天然支持不确定性量化（后验分布本身即答案），适合小样本和需要融入领域知识的场景。",
+      "formulas": [
+        {
+          "name": "贝叶斯定理",
+          "latex": "P(theta|D) = P(D|theta)*P(theta) / P(D)",
+          "explanation": "后验正比于似然×先验。P(D)为边缘似然（归一化常数），通常难以计算。"
+        },
+        {
+          "name": "共轭先验",
+          "latex": "Beta后验 = Beta(alpha+成功数, beta+失败数)",
+          "explanation": "Beta分布是二项分布的共轭先验，后验同样是Beta分布，可解析求解。"
+        }
+      ],
+      "code": "\"\"\"贝叶斯推断 - A/B测试转化率分析\"\"\"\nimport numpy as np\nfrom scipy import stats\n\n# 对照组A: 1000次展示, 100次点击\n# 实验组B: 1000次展示, 130次点击\nalpha_prior, beta_prior = 1, 1  # 无信息先验Beta(1,1)\n\n# 后验分布\nposterior_A = stats.beta(alpha_prior + 100, beta_prior + 900)\nposterior_B = stats.beta(alpha_prior + 130, beta_prior + 870)\n\n# B优于A的概率（蒙特卡洛估计）\nn_samples = 100000\nsamples_A = posterior_A.rvs(n_samples)\nsamples_B = posterior_B.rvs(n_samples)\nprob_b_better = (samples_B > samples_A).mean()\nprint(f\"B转化率高于A的概率: {prob_b_better:.1%}\")",
+      "steps": [
+        "确定似然函数（数据生成过程）",
+        "选择先验分布（无信息先验/共轭先验/领域知识）",
+        "计算后验分布（解析解/MCMC采样/变分推断）",
+        "后验分析：均值/中位数/可信区间",
+        "后验预测检查验证模型"
+      ],
+      "useCases": [
+        "A/B测试分析",
+        "医学试验（小样本推断）",
+        "信用风险评估",
+        "气候变化归因"
+      ],
+      "tips": "先验的选择会影响结论，需做先验敏感性分析。小数据时贝叶斯优势明显。对于复杂模型用MCMC（PyMC/Stan），简单模型可用共轭先验求解析解。"
+    }
+  ]
+}
