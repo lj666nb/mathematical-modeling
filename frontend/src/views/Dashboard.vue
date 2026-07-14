@@ -206,7 +206,7 @@ const chartData = computed(() => {
   const days = ['一','二','三','四','五','六','日']
   return days.map((d,i) => ({
     day: d,
-    pct: Math.max(10, 30 + Math.sin(i*1.2)*20 + Math.random()*20),
+    pct: Math.max(10, 30 + Math.sin(i*1.2)*20 + Math.sin(i*3.7)*12 + 8),
     color: i === 6 ? 'var(--primary)' : 'var(--primary-light)'
   }))
 })
@@ -247,7 +247,7 @@ onMounted(async () => {
     if(scored.length>0) stats.value.avgScore = (scored.reduce((s,r)=>s+r.score,0)/scored.length).toFixed(1)
     const today=new Date().toDateString()
     todayCount.value = (pracRes.records||[]).filter(r=>r.completed_at&&new Date(r.completed_at).toDateString()===today).length
-    weeklyChange.value = Math.floor(Math.random()*5)+1
+    weeklyChange.value = stats.value.practiceCount > 0 ? Math.min(stats.value.practiceCount, Math.floor(stats.value.practiceCount * 0.3)) : 0
     try{const chatRes = await chatApi.getHistory({page:1, page_size:1});stats.value.chatCount=chatRes.total||0}catch(e){}
     // 获取所有实验，标记未完成的
     try{const allExp = await experimentApi.getList({page:1, page_size:100})

@@ -67,54 +67,58 @@
 
         <!-- ===== 活跃任务工作区 ===== -->
         <template v-if="activeTaskId">
-          <!-- 工作流步骤指示器 -->
+          <!-- 工作流步骤指示器（带图标 + 色彩编码） -->
           <div class="step-indicator">
-            <div class="step-dot" :class="{ done: activeTask.preflight_status === 'pass', active: activeTask.current_step === 'S0' }">
-              <span class="step-num">S0</span>
-              <span class="step-label">预检</span>
+            <div class="step-dot s0" :class="{ done: activeTask.preflight_status === 'pass', active: activeTask.current_step === 'S0' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S0')"><CircleCheck /></el-icon><el-icon v-else><Search /></el-icon></span>
+              <span class="step-num">S0</span><span class="step-label">预检</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S0') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S1'), active: activeTask.current_step === 'S1' }">
-              <span class="step-num">S1</span>
-              <span class="step-label">分析</span>
+            <div class="step-dot s1" :class="{ done: isStepDone('S1'), active: activeTask.current_step === 'S1' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S1')"><CircleCheck /></el-icon><el-icon v-else><DataAnalysis /></el-icon></span>
+              <span class="step-num">S1</span><span class="step-label">分析</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S1') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S2'), active: activeTask.current_step === 'S2' }">
+            <div class="step-dot s2" :class="{ done: isStepDone('S2'), active: activeTask.current_step === 'S2' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S2')"><CircleCheck /></el-icon><el-icon v-else><Guide /></el-icon></span>
               <span class="step-num">S2</span><span class="step-label">路线</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S3') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S3'), active: activeTask.current_step === 'S3' || activeTask.current_step === 'S4' }">
+            <div class="step-dot s3" :class="{ done: isStepDone('S3'), active: activeTask.current_step === 'S3' || activeTask.current_step === 'S4' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S3')"><CircleCheck /></el-icon><el-icon v-else><Coin /></el-icon></span>
               <span class="step-num">S3</span><span class="step-label">数据</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S4') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S4'), active: false }">
+            <div class="step-dot s4" :class="{ done: isStepDone('S4'), active: false }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S4')"><CircleCheck /></el-icon><el-icon v-else><PictureFilled /></el-icon></span>
               <span class="step-num">S4</span><span class="step-label">图表</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S5') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S5'), active: activeTask.current_step === 'S5' }">
+            <div class="step-dot s5" :class="{ done: isStepDone('S5'), active: activeTask.current_step === 'S5' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S5')"><CircleCheck /></el-icon><el-icon v-else><Monitor /></el-icon></span>
               <span class="step-num">S5</span><span class="step-label">代码</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S6') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S6'), active: activeTask.current_step === 'S6' }">
-              <span class="step-num">S6</span>
-              <span class="step-label">门禁</span>
+            <div class="step-dot s6" :class="{ done: isStepDone('S6'), active: activeTask.current_step === 'S6' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S6')"><CircleCheck /></el-icon><el-icon v-else><Lock /></el-icon></span>
+              <span class="step-num">S6</span><span class="step-label">门禁</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S7') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S7'), active: activeTask.current_step === 'S7' }">
-              <span class="step-num">S7</span>
-              <span class="step-label">论文</span>
+            <div class="step-dot s7" :class="{ done: isStepDone('S7'), active: activeTask.current_step === 'S7' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S7')"><CircleCheck /></el-icon><el-icon v-else><Document /></el-icon></span>
+              <span class="step-num">S7</span><span class="step-label">论文</span>
             </div>
             <div class="step-line" :class="{ done: isStepDone('S8') }"></div>
-            <div class="step-dot" :class="{ done: isStepDone('S8'), active: activeTask.current_step === 'S7_check' }">
-              <span class="step-num">S8</span>
-              <span class="step-label">提交</span>
+            <div class="step-dot s8" :class="{ done: isStepDone('S8'), active: activeTask.current_step === 'S7_check' }">
+              <span class="step-icon"><el-icon v-if="isStepDone('S8')"><CircleCheck /></el-icon><el-icon v-else><Finished /></el-icon></span>
+              <span class="step-num">S8</span><span class="step-label">提交</span>
             </div>
           </div>
           <!-- 进度条 -->
-          <div style="margin-bottom:16px;padding:0 10px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-size: var(--text-xs);color:var(--text-secondary);">整体进度</span>
-              <span style="font-size: var(--text-xs);font-weight:600;color:var(--primary);">{{ completedSteps }}/8 步骤完成</span>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-header">
+              <span class="progress-label">整体进度</span>
+              <span class="progress-value">{{ completedSteps }}/8 步骤完成</span>
             </div>
             <div style="height:6px;background:var(--bg-primary);border-radius:3px;overflow:hidden;">
               <div :style="{ width: (completedSteps/8*100)+'%', height:'100%', background:'var(--primary)', borderRadius:'3px', transition:'width 0.5s' }"></div>
@@ -163,7 +167,7 @@
               </div>
 
               <!-- S0 预检 -->
-              <div class="app-card">
+              <div class="app-card step-card s0">
                 <div class="app-card-header">
                   <span class="app-card-title">🔍 S0 预检</span>
                   <el-tag v-if="activeTask.preflight_status === 'pass'" type="success" size="small" effect="dark" round>PASS</el-tag>
@@ -226,7 +230,7 @@
                 </div>
               </div>
             <!-- S1 赛题分析 -->
-            <div class="app-card">
+            <div class="app-card step-card s1">
                 <div class="app-card-header">
                   <span class="app-card-title">📊 S1 赛题分析</span>
                   <el-tag v-if="analysisData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -314,7 +318,7 @@
               </div>
 
               <!-- S2 模型路线 -->
-              <div class="app-card">
+              <div class="app-card step-card s2">
                 <div class="app-card-header">
                   <span class="app-card-title">🗺️ S2 模型路线</span>
                   <el-tag v-if="modelRouteData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -415,7 +419,7 @@
               </div>
 
               <!-- S3-S4 数据处理 + 可视化计划 -->
-              <div class="app-card">
+              <div class="app-card step-card s3">
                 <div class="app-card-header">
                   <span class="app-card-title">📊 S3-S4 数据处理 + 可视化</span>
                   <el-tag v-if="dataPlanData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -530,14 +534,12 @@
 
                   <!-- 🆕 实际生成的图表图片 -->
                   <template v-if="figuresData.length">
-                    <h4 style="font-size: var(--text-sm);font-weight:600;margin:16px 0 6px;">🖼️ 生成的图表 ({{ figuresData.filter(f=>f.exists).length }}/{{ figuresData.length }} 张)</h4>
-                    <div style="display:flex;flex-wrap:wrap;gap:12px;">
-                      <div v-for="(fig, fi) in figuresData.filter(f=>f.exists)" :key="fi"
-                           style="border:1px solid var(--border-light);border-radius:8px;overflow:hidden;background:white;max-width:320px;">
+                    <h4 class="section-sub">🖼️ 生成的图表 ({{ figuresData.filter(f=>f.exists).length }}/{{ figuresData.length }} 张)</h4>
+                    <div class="figure-grid">
+                      <div v-for="(fig, fi) in figuresData.filter(f=>f.exists)" :key="fi" class="figure-card">
                         <img :src="getFigureImgUrl(fig)" :alt="fig.title"
-                             style="width:100%;height:auto;display:block;"
                              @error="$event.target.style.display='none'" />
-                        <div style="padding:6px 8px;font-size: var(--text-xs);color:var(--text-secondary);background:var(--bg-secondary);">
+                        <div class="figure-info">
                           <strong>{{ fig.figure_id }}</strong>
                           <span style="margin-left:4px;">{{ fig.title }}</span>
                           <span style="float:right;color:var(--text-tertiary);">{{ (fig.file_size/1024).toFixed(0) }}KB</span>
@@ -555,7 +557,7 @@
               </div>
 
               <!-- S5 建模代码生成 + 结果契约 -->
-              <div class="app-card">
+              <div class="app-card step-card s5">
                 <div class="app-card-header">
                   <span class="app-card-title">🤖 S5 建模代码 + 结果契约</span>
                   <el-tag v-if="modelContractData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -696,7 +698,7 @@
               </div>
 
               <!-- S6 证据门禁 -->
-              <div class="app-card">
+              <div class="app-card step-card s6">
                 <div class="app-card-header">
                   <span class="app-card-title">🔒 S6 证据门禁</span>
                   <el-tag v-if="evidenceGateData?.status === 'PASS'" type="success" size="small" effect="dark" round>PASS</el-tag>
@@ -756,7 +758,7 @@
               </div>
 
               <!-- S7 论文生成 + 格式检查 -->
-              <div class="app-card">
+              <div class="app-card step-card s7">
                 <div class="app-card-header">
                   <span class="app-card-title">📝 S7 论文生成 + 格式检查</span>
                   <el-tag v-if="formatCheckData?.status === 'PASS'" type="success" size="small" effect="dark" round>已通过</el-tag>
@@ -849,7 +851,8 @@ import { competitionApi } from '../api'
 import Sidebar from '../components/Sidebar.vue'
 import {
   HomeFilled, Trophy, Plus, UploadFilled, Document, Delete,
-  CircleCheck, CircleClose, DataAnalysis, Guide, Lock
+  CircleCheck, CircleClose, DataAnalysis, Guide, Lock,
+  Search, Coin, PictureFilled, Monitor, Finished
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -1441,49 +1444,80 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 20px 0;
+  padding: 24px 0;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 .step-dot {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 14px;
+  gap: 3px;
+  padding: 10px 12px;
   border-radius: 12px;
   background: var(--bg-primary);
   border: 2px solid var(--border-light);
-  min-width: 60px;
-  transition: all 0.3s;
+  min-width: 64px;
+  transition: all 0.3s var(--ease-out);
   &.active {
     border-color: var(--primary);
     background: var(--primary-light);
+    box-shadow: 0 0 12px rgba(22,93,255,0.15);
+    .step-icon { color: var(--primary); }
     .step-num { color: var(--primary); font-weight: 700; }
   }
   &.done {
     border-color: var(--success);
     background: var(--success-bg);
+    .step-icon { color: var(--success); }
     .step-num { color: var(--success); }
   }
-  &.future {
-    opacity: 0.4;
-  }
+}
+.step-icon {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-tertiary);
+  transition: color 0.3s;
 }
 .step-num {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
   font-family: monospace;
 }
 .step-label {
-  font-size: var(--text-xs);
+  font-size: 11px;
   color: var(--text-tertiary);
 }
 .step-line {
-  width: 32px;
+  width: 28px;
   height: 2px;
   background: var(--border-light);
-  &.done { background: var(--success); }
+  transition: background 0.3s;
+  &.done {
+    background: linear-gradient(90deg, var(--success), var(--primary));
+  }
+}
+
+// 进度条
+.progress-bar-wrap {
+  margin-bottom: 16px;
+  padding: 0 10px;
+}
+.progress-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.progress-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.progress-value {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--primary);
 }
 
 // 工作区 — 单栏全宽，S0→S7 从上到下依次排列
@@ -1596,8 +1630,8 @@ onMounted(() => {
   border-radius: 4px;
   margin-bottom: 2px;
   line-height: 1.5;
-  &.err { background: #FFF1F0; color: var(--danger); }
-  &.warn { background: #FFF7E6; color: var(--warning); }
+  &.err { background: var(--danger-bg); color: var(--danger); }
+  &.warn { background: var(--warning-bg); color: var(--warning); }
 }
 
 // S1 分析结果
@@ -1694,5 +1728,91 @@ onMounted(() => {
 .rubric-location {
   color: var(--text-tertiary);
   font-size: var(--text-xs);
+}
+
+// 步骤卡片左色条编码
+$step-colors: (
+  s0: #165DFF,
+  s1: #722ED1,
+  s2: #FF7D00,
+  s3: #00B42A,
+  s4: #00B42A,
+  s5: #14C9C9,
+  s6: #F53F3F,
+  s7: #D4A017,
+);
+.step-card {
+  border-left: 3px solid transparent;
+  transition: border-color 0.3s;
+  @each $key, $color in $step-colors {
+    &.#{$key} {
+      border-left-color: $color;
+    }
+  }
+}
+
+// 通用工具类（替代内联样式）
+.step-hint {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: 8px;
+}
+.step-ok {
+  font-size: var(--text-xs);
+  color: var(--success);
+  margin-top: 8px;
+}
+.card-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.result-panel {
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border-light);
+}
+.empty-hint {
+  text-align: center;
+  padding: 30px 0;
+  color: var(--text-tertiary);
+}
+.section-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.section-sub {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin: 16px 0 6px;
+}
+
+// 图表缩略图响应式网格
+.figure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.figure-card {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: var(--glow-elevated);
+  }
+  img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .figure-info {
+    padding: 6px 10px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+  }
 }
 </style>
