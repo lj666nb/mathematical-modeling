@@ -67,19 +67,23 @@
 
               <!-- 右：表单+测试 -->
               <el-col :span="14">
-                <!-- DeepSeek 快速配置 -->
-                <div class="app-card deepseek-quick-card" style="margin-bottom:20px;">
+                <!-- 多厂商快速配置 -->
+                <div class="app-card" style="margin-bottom:20px;">
                   <div class="app-card-header">
-                    <span class="app-card-title">🚀 快速配置 DeepSeek</span>
-                    <el-tag type="danger" size="small" effect="dark" round>推荐</el-tag>
+                    <span class="app-card-title">🚀 快速配置</span>
+                    <el-tag type="danger" size="small" effect="dark" round>一键填入</el-tag>
                   </div>
                   <div class="app-card-body">
-                    <p style="color:var(--text-secondary);font-size: var(--text-sm);margin-bottom:12px;">DeepSeek V4 模型性价比极高，适合教学场景。只需输入API密钥即可使用。</p>
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                      <el-button type="primary" @click="quickSetupDeepSeek" round>
-                        <el-icon><Connection /></el-icon> 一键填入 DeepSeek 配置
-                      </el-button>
-                      <span style="font-size: var(--text-xs);color:var(--text-tertiary);">自动填充：厂商/API地址/模型</span>
+                    <p style="color:var(--text-secondary);font-size: var(--text-sm);margin-bottom:16px;">选择一个厂商自动填入 API 地址和推荐模型，API 密钥需自行填写。</p>
+                    <div class="provider-quick-grid">
+                      <div v-for="p in providers" :key="p.key" class="prov-qcard" @click="quickSetup(p)">
+                        <div class="prov-qicon">{{ p.name.charAt(0) }}</div>
+                        <div class="prov-qbody">
+                          <div class="prov-qname">{{ p.name }}</div>
+                          <div class="prov-qmodel">{{ p.models[0] || '默认模型' }}</div>
+                        </div>
+                        <el-button size="small" round type="primary" plain>填入</el-button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -262,20 +266,20 @@ function onBrowserProviderChange(v){
   }
 }
 
-// DeepSeek 快速配置
-function quickSetupDeepSeek() {
+// 多厂商快速配置（从后端获取的厂商列表动态渲染，仅自动填充厂商/地址/模型，API密钥需用户自行填写）
+function quickSetup(p) {
   isEditing.value = false; editingId.value = null
   Object.assign(form, {
-    config_name: '我的 DeepSeek V4',
-    provider: 'deepseek',
-    base_url: 'https://api.deepseek.com/v1',
-    model_name: 'deepseek-v4-pro',
-    api_key: 'sk-5b7fc02c278a4f13b8c3cc542001405c',
+    config_name: `我的 ${p.name}`,
+    provider: p.key,
+    base_url: p.default_url || '',
+    model_name: p.models?.[0] || '',
+    api_key: '',
     temperature: 0.7,
     max_tokens: 4096
   })
   formVisible.value = true
-  ElMessage.success('🚀 已自动填充 DeepSeek 配置，点击「保存配置」即可使用')
+  ElMessage.info(`🔑 已填入 ${p.name} 基础配置，请自行填写 API 密钥后保存`)
 }
 
 function showCreateDialog(){isEditing.value=false;editingId.value=null;Object.assign(form,{config_name:'',provider:'openai',base_url:'',model_name:'',api_key:'',temperature:0.7,max_tokens:4096});formVisible.value=true}
@@ -323,4 +327,13 @@ onMounted(async()=>{try{providers.value=(await llmConfigApi.getProviders()).prov
 .sec-item{display:flex;align-items:flex-start;gap:10px;font-size: var(--text-sm);line-height:1.5;}
 .sec-item strong{display:block;font-weight:600;color:var(--text-primary);margin-bottom:1px;}
 .sec-item span{color:var(--text-secondary);}
+
+/* 厂商快速选择网格 */
+.provider-quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+.prov-qcard{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border-light);border-radius:10px;cursor:pointer;transition:all 0.2s;}
+.prov-qcard:hover{border-color:var(--primary);background:var(--primary-light);transform:translateY(-1px);box-shadow:0 4px 12px rgba(22,93,255,0.08);}
+.prov-qicon{width:36px;height:36px;border-radius:8px;background:var(--info-bg);color:var(--info);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--text-sm);flex-shrink:0;}
+.prov-qbody{flex:1;min-width:0;}
+.prov-qname{font-weight:600;font-size:var(--text-sm);color:var(--text-primary);margin-bottom:1px;}
+.prov-qmodel{font-size:var(--text-xs);color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>

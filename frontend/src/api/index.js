@@ -36,6 +36,11 @@ request.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
+    // 🔧 FormData文件上传：删除默认的Content-Type，让axios自动设置正确的multipart/form-data+boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     // 浏览器密钥模式：从localStorage读取LLM配置注入到请求头
     const llmKeyMode = localStorage.getItem('llm_key_mode')
     if (llmKeyMode === 'browser') {
@@ -176,9 +181,7 @@ export const chatApi = {
   deleteSession(sessionId) { return request.delete(`/chat/session/${sessionId}`) },
   rate(chatId, rating) { return request.post(`/chat/${chatId}/rate`, { rating }) },
   uploadFile(sessionId, formData) {
-    return request.post('/chat/upload-file', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    return request.post('/chat/upload-file', formData)
   },
   clearFile(sessionId) { return request.delete(`/chat/session/${sessionId}/file`) },
 }
@@ -197,9 +200,8 @@ export const competitionApi = {
   getTask(id) { return request.get(`/competition/tasks/${id}`) },
   deleteTask(id) { return request.delete(`/competition/tasks/${id}`) },
   uploadFiles(taskId, formData) {
-    return request.post(`/competition/tasks/${taskId}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    // axios 会自动为 FormData 设置正确的 Content-Type (含 boundary)
+    return request.post(`/competition/tasks/${taskId}/upload`, formData)
   },
   listFiles(taskId) { return request.get(`/competition/tasks/${taskId}/files`) },
   runPreflight(taskId) { return request.post(`/competition/tasks/${taskId}/preflight`) },
@@ -212,6 +214,10 @@ export const competitionApi = {
   getDataPipeline(taskId) { return request.get(`/competition/tasks/${taskId}/data-pipeline`) },
   runModelContract(taskId) { return request.post(`/competition/tasks/${taskId}/model-contract`) },
   getModelContract(taskId) { return request.get(`/competition/tasks/${taskId}/model-contract`) },
+
+  // 图表
+  getFigures(taskId) { return request.get(`/competition/tasks/${taskId}/figures`) },
+  getFigureUrl(taskId, path) { return `/api/competition/tasks/${taskId}/figures/${path.split('/').pop()}` },
 
   // S6 证据门禁
   runEvidenceGate(taskId) { return request.post(`/competition/tasks/${taskId}/evidence-gate`) },

@@ -708,17 +708,34 @@ async def get_format_check(
 @router.get("/tasks/{task_id}/paper/download")
 async def download_paper(
     task_id: int,
-    current_user: User = Depends(get_current_user),
+    token: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    下载论文草稿文件（Markdown 格式）
+    下载论文草稿文件（Markdown 格式）。<a> 标签通过 ?token= 参数认证
 
     返回 paper_output/{task_id}/draft_paper.md
     """
     from pathlib import Path as FilePath
+    from app.routers.auth import decode_access_token
+    from app.models.models import User
+    from sqlalchemy import select as sa_select
 
-    service = CompetitionService(db, current_user.id)
+    if not token:
+        raise HTTPException(status_code=401, detail="需要认证令牌(?token=)")
+
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="无效的令牌载荷")
+
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    service = CompetitionService(db, user_id)
     task = await service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -732,3 +749,103 @@ async def download_paper(
         filename=f"paper_task{task_id}.md",
         media_type="text/markdown; charset=utf-8",
     )
+
+
+# ==================== 图表服务 ====================
+
+@router.get("/tasks/{task_id}/figures")
+async def list_figures(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取任务已生成的图表列表（含文件路径和状态）"""
+    from pathlib import Path as FilePath
+
+    service = CompetitionService(db, current_user.id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    figures_dir = FilePath("paper_output") / str(task_id) / "figures"
+    figures: list[dict] = []
+
+    # 从 figure_index.json 获取
+    index_path = FilePath("paper_output") / str(task_id) / "figure_index.json"
+    if index_path.exists():
+        import json as _json
+        try:
+            index_data = _json.loads(index_path.read_text(encoding="utf-8"))
+            for fig in index_data.get("figures", []):
+                raw_path = fig.get("path", "")
+                # 提取纯文件名，避免路径双重嵌套
+                filename = FilePath(raw_path).name
+                fig_path = figures_dir / filename
+                figures.append({
+                    "figure_id": fig.get("figure_id", ""),
+                    "title": fig.get("title", ""),
+                    "question_id": fig.get("question_id", ""),
+                    "path": f"figures/{filename}",
+                    "exists": fig_path.exists() and fig_path.stat().st_size > 100,
+                    "file_size": fig_path.stat().st_size if fig_path.exists() else 0,
+                    "chart_type": fig.get("chart_type", ""),
+                })
+        except Exception:
+            pass
+
+    # 如果 index 不存在，直接扫描目录
+    if not figures and figures_dir.exists():
+        for p in sorted(figures_dir.glob("*.png")):
+            figures.append({
+                "figure_id": p.stem,
+                "title": p.stem,
+                "path": f"figures/{p.name}",
+                "exists": True,
+                "file_size": p.stat().st_size,
+                "chart_type": "",
+                "question_id": "",
+            })
+
+    return {"task_id": task_id, "figures": figures, "total": len(figures)}
+
+
+@router.get("/tasks/{task_id}/figures/{filename:path}")
+async def get_figure(
+    task_id: int,
+    filename: str,
+    token: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取图表图片（PNG）。<img> 标签通过 ?token= 参数认证"""
+    from pathlib import Path as FilePath
+    from app.routers.auth import decode_access_token
+    from app.models.models import User
+    from sqlalchemy import select as sa_select
+
+    if not token:
+        raise HTTPException(status_code=401, detail="需要认证令牌(?token=)")
+
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="无效的令牌载荷")
+
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    service = CompetitionService(db, user_id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 安全校验：防止路径遍历
+    safe_name = FilePath(filename).name
+    fig_path = FilePath("paper_output") / str(task_id) / "figures" / safe_name
+    if not fig_path.exists():
+        raise HTTPException(status_code=404, detail="图表文件不存在")
+
+    media_type = "image/png" if fig_path.suffix.lower() == ".png" else "image/jpeg"
+    return FileResponse(path=str(fig_path), media_type=media_type)

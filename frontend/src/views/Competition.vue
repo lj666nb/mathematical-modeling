@@ -121,35 +121,32 @@
             </div>
           </div>
 
-          <!-- 双栏布局 -->
+          <!-- 单栏全宽布局 -->
           <div class="work-area">
-            <!-- 左栏：文件上传 + S0 预检 -->
-            <div class="work-left">
-              <!-- 文件上传区 -->
-              <div class="app-card">
+            <!-- 文件上传区 -->
+            <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">📁 赛题文件</span>
                   <span style="font-size: var(--text-xs);color:var(--text-tertiary);">{{ uploadedFiles.length }} 个文件</span>
                 </div>
                 <div class="app-card-body">
-                  <!-- 拖拽上传区 -->
-                  <el-upload
-                    class="upload-zone"
-                    drag
+                  <!-- 文件上传区 -->
+                  <input
+                    id="competition-file-input"
+                    ref="fileInputRef"
+                    type="file"
                     multiple
-                    name="files"
-                    :action="`/api/competition/tasks/${activeTaskId}/upload`"
-                    :headers="uploadHeaders"
-                    :on-success="onUploadSuccess"
-                    :on-error="onUploadError"
-                    :show-file-list="false"
-                  >
-                    <el-icon :size="36" style="color:var(--primary);"><UploadFilled /></el-icon>
+                    accept=".pdf,.docx,.md,.txt,.csv,.xlsx,.xls,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/json"
+                    style="display:none"
+                    @change="onFileInputChange"
+                  />
+                  <label for="competition-file-input" class="upload-zone" @dragover.prevent @drop.prevent="onFileDrop">
+                    <el-icon :size="40" style="color:var(--primary);margin-bottom:8px;"><UploadFilled /></el-icon>
                     <div class="upload-text">
-                      <p><strong>点击或拖拽上传赛题文件</strong></p>
+                      <p><strong>📁 点击选择文件 或 拖拽到此处</strong></p>
                       <p class="upload-hint">支持 PDF / DOCX / MD / TXT / CSV / XLSX / JSON</p>
                     </div>
-                  </el-upload>
+                  </label>
 
                   <!-- 已上传文件列表 -->
                   <div v-if="uploadedFiles.length > 0" class="file-list">
@@ -228,11 +225,8 @@
                   </div>
                 </div>
               </div>
-            </div>
-
-            <!-- 右栏：S1 赛题分析 -->
-            <div class="work-right">
-              <div class="app-card">
+            <!-- S1 赛题分析 -->
+            <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">📊 S1 赛题分析</span>
                   <el-tag v-if="analysisData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -245,7 +239,7 @@
                   <el-button
                     type="success"
                     :loading="analysisLoading"
-                    :disabled="activeTask.preflight_status !== 'pass'"
+                    :disabled="!isStepDone('S0')"
                     @click="runAnalysis"
                     round
                   >
@@ -320,7 +314,7 @@
               </div>
 
               <!-- S2 模型路线 -->
-              <div class="app-card" style="margin-top:16px;">
+              <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">🗺️ S2 模型路线</span>
                   <el-tag v-if="modelRouteData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -333,16 +327,16 @@
                   <el-button
                     type="primary"
                     :loading="modelRouteLoading"
-                    :disabled="activeTask.status !== 's1_completed' && activeTask.status !== 's2_completed' && activeTask.status !== 's4_completed'"
+                    :disabled="!isStepDone('S1')"
                     @click="runModelRoute"
                     round
                   >
                     {{ modelRouteLoading ? '生成中...' : '运行 S2 模型路线' }}
                   </el-button>
-                  <div v-if="activeTask.status !== 's1_completed' && activeTask.status !== 's2_completed' && activeTask.status !== 's4_completed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
+                  <div v-if="!isStepDone('S1')" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
                     ⚠ 请先完成 S1 赛题分析再运行 S2 模型路线
                   </div>
-                  <div v-if="['s2_completed','s4_completed','s5_completed'].includes(activeTask.status)" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
+                  <div v-if="isStepDone('S2')" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
                     ✅ S2 模型路线已完成，可重新运行
                   </div>
                 </div>
@@ -421,7 +415,7 @@
               </div>
 
               <!-- S3-S4 数据处理 + 可视化计划 -->
-              <div class="app-card" style="margin-top:16px;">
+              <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">📊 S3-S4 数据处理 + 可视化</span>
                   <el-tag v-if="dataPlanData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -434,16 +428,16 @@
                   <el-button
                     type="primary"
                     :loading="dataPipelineLoading"
-                    :disabled="activeTask.status !== 's2_completed' && activeTask.status !== 's4_completed'"
+                    :disabled="!isStepDone('S2')"
                     @click="runDataPipeline"
                     round
                   >
                     {{ dataPipelineLoading ? '生成中...' : '运行 S3-S4 数据处理' }}
                   </el-button>
-                  <div v-if="activeTask.status !== 's2_completed' && activeTask.status !== 's4_completed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
+                  <div v-if="!['s2_completed','s4_completed','s5_completed','s6_completed','s7_completed','s7_check_passed'].includes(activeTask.status)" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
                     ⚠ 请先完成 S2 模型路线再运行 S3-S4 数据处理
                   </div>
-                  <div v-if="['s4_completed','s5_completed'].includes(activeTask.status)" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
+                  <div v-if="isStepDone('S4')" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
                     ✅ S3-S4 数据处理已完成，可重新运行
                   </div>
                 </div>
@@ -533,6 +527,24 @@
                       提示：{{ vizPlanData.note }}
                     </div>
                   </template>
+
+                  <!-- 🆕 实际生成的图表图片 -->
+                  <template v-if="figuresData.length">
+                    <h4 style="font-size: var(--text-sm);font-weight:600;margin:16px 0 6px;">🖼️ 生成的图表 ({{ figuresData.filter(f=>f.exists).length }}/{{ figuresData.length }} 张)</h4>
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;">
+                      <div v-for="(fig, fi) in figuresData.filter(f=>f.exists)" :key="fi"
+                           style="border:1px solid var(--border-light);border-radius:8px;overflow:hidden;background:white;max-width:320px;">
+                        <img :src="getFigureImgUrl(fig)" :alt="fig.title"
+                             style="width:100%;height:auto;display:block;"
+                             @error="$event.target.style.display='none'" />
+                        <div style="padding:6px 8px;font-size: var(--text-xs);color:var(--text-secondary);background:var(--bg-secondary);">
+                          <strong>{{ fig.figure_id }}</strong>
+                          <span style="margin-left:4px;">{{ fig.title }}</span>
+                          <span style="float:right;color:var(--text-tertiary);">{{ (fig.file_size/1024).toFixed(0) }}KB</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
                 </div>
 
                 <!-- 空状态 -->
@@ -543,7 +555,7 @@
               </div>
 
               <!-- S5 建模代码生成 + 结果契约 -->
-              <div class="app-card" style="margin-top:16px;">
+              <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">🤖 S5 建模代码 + 结果契约</span>
                   <el-tag v-if="modelContractData" type="success" size="small" effect="dark" round>已完成</el-tag>
@@ -556,16 +568,16 @@
                   <el-button
                     type="primary"
                     :loading="modelContractLoading"
-                    :disabled="activeTask.status !== 's4_completed' && activeTask.status !== 's5_completed'"
+                    :disabled="!isStepDone('S4')"
                     @click="runModelContract"
                     round
                   >
                     {{ modelContractLoading ? '生成中...' : '运行 S5 建模代码' }}
                   </el-button>
-                  <div v-if="activeTask.status !== 's4_completed' && activeTask.status !== 's5_completed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
+                  <div v-if="!isStepDone('S4')" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
                     ⚠ 请先完成 S3-S4 数据处理再运行 S5 建模代码
                   </div>
-                  <div v-if="activeTask.status === 's5_completed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
+                  <div v-if="isStepDone('S5')" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
                     ✅ S5 建模代码已完成，可重新运行
                   </div>
                 </div>
@@ -684,7 +696,7 @@
               </div>
 
               <!-- S6 证据门禁 -->
-              <div class="app-card" style="margin-top:16px;">
+              <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">🔒 S6 证据门禁</span>
                   <el-tag v-if="evidenceGateData?.status === 'PASS'" type="success" size="small" effect="dark" round>PASS</el-tag>
@@ -698,16 +710,16 @@
                   <el-button
                     type="primary"
                     :loading="evidenceGateLoading"
-                    :disabled="activeTask.status !== 's5_completed' && activeTask.status !== 's6_completed' && activeTask.status !== 's6_failed'"
+                    :disabled="!isStepDone('S5')"
                     @click="runEvidenceGate"
                     round
                   >
                     {{ evidenceGateLoading ? '检查中...' : '运行 S6 证据门禁' }}
                   </el-button>
-                  <div v-if="activeTask.status !== 's5_completed' && activeTask.status !== 's6_completed' && activeTask.status !== 's6_failed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
+                  <div v-if="!isStepDone('S5')" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
                     ⚠ 请先完成 S5 建模代码再运行 S6
                   </div>
-                  <div v-if="activeTask.status === 's6_completed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
+                  <div v-if="isStepDone('S6')" style="margin-top:8px;font-size: var(--text-xs);color:var(--success);">
                     ✅ S6 证据门禁通过，可以进入 S7
                   </div>
                 </div>
@@ -744,7 +756,7 @@
               </div>
 
               <!-- S7 论文生成 + 格式检查 -->
-              <div class="app-card" style="margin-top:16px;">
+              <div class="app-card">
                 <div class="app-card-header">
                   <span class="app-card-title">📝 S7 论文生成 + 格式检查</span>
                   <el-tag v-if="formatCheckData?.status === 'PASS'" type="success" size="small" effect="dark" round>已通过</el-tag>
@@ -757,12 +769,12 @@
                   </p>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <el-button type="primary" :loading="paperWritingLoading"
-                      :disabled="activeTask.status !== 's6_completed' && activeTask.status !== 's7_completed' && activeTask.status !== 's7_check_passed'"
+                      :disabled="!isStepDone('S6')"
                       @click="runPaperWriting" round>
                       {{ paperWritingLoading ? '生成中...' : '生成论文' }}
                     </el-button>
                     <el-button type="warning" :loading="formatCheckLoading"
-                      :disabled="activeTask.status !== 's7_completed' && activeTask.status !== 's7_check_passed'"
+                      :disabled="!isStepDone('S7')"
                       @click="runFormatCheck" round>
                       {{ formatCheckLoading ? '检查中...' : '格式检查' }}
                     </el-button>
@@ -770,7 +782,7 @@
                       📥 下载论文(MD)
                     </el-button>
                   </div>
-                  <div v-if="activeTask.status !== 's6_completed' && activeTask.status !== 's7_completed' && activeTask.status !== 's7_check_passed'" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
+                  <div v-if="!isStepDone('S6')" style="margin-top:8px;font-size: var(--text-xs);color:var(--text-tertiary);">
                     ⚠ 请先通过 S6 证据门禁
                   </div>
                 </div>
@@ -808,7 +820,6 @@
                   <p style="margin-top:8px;font-size: var(--text-sm);">通过 S6 门禁后在此生成论文</p>
                 </div>
               </div>
-            </div>
           </div>
         </template>
       </div>
@@ -832,6 +843,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { competitionApi } from '../api'
 import Sidebar from '../components/Sidebar.vue'
@@ -859,6 +871,7 @@ const rubricAlignmentData = ref(null)
 const dataPipelineLoading = ref(false)
 const dataPlanData = ref(null)
 const vizPlanData = ref(null)
+const figuresData = ref([])
 const modelContractLoading = ref(false)
 const modelContractData = ref(null)
 const evidenceGateLoading = ref(false)
@@ -871,6 +884,8 @@ const showCreateDialog = ref(false)
 const newTaskTitle = ref('')
 const creatingTask = ref(false)
 
+const fileInputRef = ref(null)
+
 // 上传请求头
 const uploadHeaders = computed(() => ({
   Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -878,13 +893,13 @@ const uploadHeaders = computed(() => ({
 
 // 步骤完成判断 (CMP-010: 进度可视化)
 const stepStatusMap = {
-  'S0': ['s0_passed'],
-  'S1': ['s1_completed', 's2_completed', 's4_completed', 's5_completed', 's6_completed', 's7_completed', 's7_check_passed'],
-  'S2': ['s2_completed', 's4_completed', 's5_completed', 's6_completed', 's7_completed', 's7_check_passed'],
-  'S3': ['s4_completed', 's5_completed', 's6_completed', 's7_completed', 's7_check_passed'],
-  'S4': ['s4_completed', 's5_completed', 's6_completed', 's7_completed', 's7_check_passed'],
-  'S5': ['s5_completed', 's6_completed', 's7_completed', 's7_check_passed'],
-  'S6': ['s6_completed', 's7_completed', 's7_check_passed'],
+  'S0': ['s0_passed', 's1_completed', 's2_completed', 's4_completed', 's5_completed', 's6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
+  'S1': ['s1_completed', 's2_completed', 's4_completed', 's5_completed', 's6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
+  'S2': ['s2_completed', 's4_completed', 's5_completed', 's6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
+  'S3': ['s4_completed', 's5_completed', 's6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
+  'S4': ['s4_completed', 's5_completed', 's6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
+  'S5': ['s5_completed', 's6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
+  'S6': ['s6_completed', 's6_failed', 's7_completed', 's7_check_passed'],
   'S7': ['s7_completed', 's7_check_passed'],
   'S8': ['s7_check_passed'],
 }
@@ -1022,9 +1037,42 @@ async function loadFiles() {
   } catch (e) { /* ignore */ }
 }
 
+function triggerFileUpload() {
+  fileInputRef.value?.click()
+}
+
+async function onFileInputChange(e) {
+  const files = e.target.files
+  if (!files || files.length === 0) return
+  await uploadFiles(files)
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+async function onFileDrop(e) {
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+  await uploadFiles(files)
+}
+
+async function uploadFiles(fileList) {
+  if (!activeTaskId.value) return
+  const formData = new FormData()
+  for (const f of fileList) {
+    formData.append('files', f)
+  }
+  try {
+    await competitionApi.uploadFiles(activeTaskId.value, formData)
+    await loadFiles()
+    await refreshTask()
+    ElMessage.success(`成功上传 ${fileList.length} 个文件`)
+  } catch (err) {
+    console.error('Upload failed', err)
+    ElMessage.error('上传失败: ' + (err.response?.data?.detail || err.message))
+  }
+}
+
 function onUploadSuccess() {
   loadFiles()
-  // 刷新任务计数
   refreshTask()
 }
 
@@ -1127,6 +1175,7 @@ async function runDataPipeline() {
     const res = await competitionApi.runDataPipeline(activeTaskId.value)
     dataPlanData.value = res.data_plan || res
     vizPlanData.value = res.visualization_plan || {}
+    await loadFigures()
     await refreshTask()
   } catch (e) {
     console.error(e)
@@ -1146,6 +1195,25 @@ async function loadDataPipelineFromDB() {
       vizPlanData.value = res.visualization_plan
     }
   } catch (e) { /* ignore */ }
+  loadFigures() // also load figure images
+}
+
+// 🆕 加载已生成的图表列表
+async function loadFigures() {
+  if (!activeTaskId.value) return
+  try {
+    const res = await competitionApi.getFigures(activeTaskId.value)
+    figuresData.value = res.figures || []
+  } catch (e) { figuresData.value = [] }
+}
+
+// 🆕 获取图表图片URL
+function getFigureImgUrl(fig) {
+  if (!activeTaskId.value) return ''
+  const base = competitionApi.getFigureUrl(activeTaskId.value, fig.path || '')
+  // <img> 标签不经过axios，需要把token拼在URL里
+  const token = localStorage.getItem('token')
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base
 }
 
 // ===== S5 建模代码生成 + 结果契约 =====
@@ -1260,8 +1328,9 @@ async function loadFormatCheckFromDB() {
 
 function downloadPaper() {
   if (!activeTaskId.value) return
+  const token = localStorage.getItem('token')
   const a = document.createElement('a')
-  a.href = `/api/competition/tasks/${activeTaskId.value}/paper/download`
+  a.href = `/api/competition/tasks/${activeTaskId.value}/paper/download?token=${encodeURIComponent(token || '')}`
   a.download = `paper_task${activeTaskId.value}.md`
   document.body.appendChild(a)
   a.click()
@@ -1417,22 +1486,34 @@ onMounted(() => {
   &.done { background: var(--success); }
 }
 
-// 工作区
+// 工作区 — 单栏全宽，S0→S7 从上到下依次排列
 .work-area {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.work-left, .work-right {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-// 上传区
+// 上传区 — 使用 label 包裹，原生 click-to-upload，兼容所有浏览器
 .upload-zone {
+  display: block;
   width: 100%;
   margin-bottom: 12px;
+  border: 2px dashed var(--color-slate-500);
+  border-radius: var(--radius-lg);
+  background: var(--color-slate-800);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+
+  &:hover {
+    border-color: var(--color-gold);
+    background: var(--color-gold-subtle);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
 }
 .upload-text {
   p { margin: 4px 0; font-size: var(--text-sm); }

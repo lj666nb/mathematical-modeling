@@ -78,7 +78,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="至少6位密码"
+            placeholder="至少8位密码"
             :prefix-icon="Lock"
             show-password
             @input="onPasswordInput"
@@ -182,7 +182,7 @@ const strengthClass = ref('')
 function calcPasswordStrength(pwd) {
   if (!pwd) { strengthWidth.value = 0; strengthText.value = ''; strengthClass.value = ''; return }
   let score = 0
-  if (pwd.length >= 6) score += 20
+  if (pwd.length >= 8) score += 20
   if (pwd.length >= 10) score += 10
   if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score += 20
   if (/\d/.test(pwd)) score += 15
@@ -229,10 +229,11 @@ function onUsernameInput() {
   if (usernameStatus.value !== '') usernameStatus.value = ''
 }
 
-// 提交按钮锁定：用户名未通过可用性校验时置灰
+// 提交按钮锁定：仅当用户名格式错误或已被注册时才置灰
+// Bug修复：不在 usernameStatus 为空（未校验）时禁用，避免用户不触发 blur 就无法提交
 const submitDisabled = computed(() => {
   if (loading.value) return true
-  if (form.username.length >= 3 && usernameStatus.value !== 'valid') return true
+  if (usernameStatus.value === 'invalid' || usernameStatus.value === 'format-error') return true
   return false
 })
 
@@ -248,7 +249,7 @@ const validateUsername = (rule, value, callback) => {
 
 const validatePassword = (rule, value, callback) => {
   if (!value) return callback(new Error('请输入密码'))
-  if (value.length < 6) return callback(new Error('密码至少6位'))
+  if (value.length < 8) return callback(new Error('密码至少8位'))
   callback()
 }
 
@@ -277,6 +278,22 @@ const rules = {
 // Bug2修复：注册成功后正确跳转登录页 + 成功弹窗
 
 async function handleRegister() {
+  // Bug修复：提交前先校验用户名的格式+唯一性（用户可能未触发 blur）
+  if (form.username.trim().length >= 3 && /^[a-zA-Z0-9]+$/.test(form.username.trim())) {
+    if (usernameStatus.value !== 'valid' && usernameStatus.value !== 'invalid') {
+      await checkUsername()
+    }
+    // 等待校验完成后，如果用户名已被注册，阻止提交
+    if (usernameStatus.value === 'invalid') {
+      ElMessage.error('该用户名已被注册，请更换')
+      return
+    }
+    if (usernameStatus.value === 'format-error') {
+      ElMessage.error('用户名仅允许字母和数字')
+      return
+    }
+  }
+
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) {
     ElMessage.warning('请正确填写所有必填项')
@@ -301,12 +318,20 @@ async function handleRegister() {
     })
 
     // 路由跳转到登录页
-    router.push('/login')
+    setTimeout(() => {
+      router.push('/login')
+    }, 500)
 
   } catch (err) {
     // 错误在拦截器中已处理，此处补充提示
-    if (err?.response?.data?.detail === '用户名已存在') {
+    const detail = err?.response?.data?.detail || ''
+    if (detail === '用户名已存在') {
       usernameStatus.value = 'invalid'
+      ElMessage.error('该用户名已被注册，请更换')
+    } else if (detail) {
+      ElMessage.error(detail)
+    } else {
+      ElMessage.error('注册失败，请稍后重试')
     }
   } finally {
     loading.value = false

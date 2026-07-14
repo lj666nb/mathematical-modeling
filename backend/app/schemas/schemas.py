@@ -329,6 +329,8 @@ class DataPipelineResult(BaseModel):
     visualization_plan: dict  # 可视化计划
     data_files_count: int
     figures_count: int
+    charts_generated: int = 0
+    chart_errors: list = []
 
 
 class ModelContractResult(BaseModel):

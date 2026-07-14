@@ -36,3 +36,9 @@ openpyxl==3.1.2
 pandas==2.1.4
 xlrd==2.0.1
 PyMuPDF==1.23.8
+
+# 图表生成与科学计算（竞赛模块 S3-S5 依赖）
+matplotlib==3.8.2
+seaborn==0.13.0
+scikit-learn==1.3.2
+scipy==1.11.4

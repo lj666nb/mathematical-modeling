@@ -7,7 +7,7 @@
   <div class="sidebar" :class="{ collapsed: isCollapsed }">
 
     <!-- ====== 品牌区：数学符号标识 ====== -->
-    <div class="sidebar-brand" @click="toggleCollapse">
+    <div class="sidebar-brand">
       <div class="brand-mark">
         <!-- Σ (求和符号) — 数学建模的核心：从数据中提取结构 -->
         <svg viewBox="0 0 32 32" class="brand-svg" fill="none">
@@ -101,8 +101,6 @@
         <span class="nav-text">教学统计</span>
       </router-link>
     </nav>
-
-    <div class="sidebar-spacer"></div>
 
     <!-- ====== 底部用户区 ====== -->
     <div class="sidebar-footer">
@@ -351,11 +349,6 @@ function handleLogout() {
   .nav-icon {
     color: var(--color-gold);
   }
-}
-
-/* —— 弹性区域 —— */
-.sidebar-spacer {
-  flex: 1;
 }
 
 /* —— 底部用户区 —— */
