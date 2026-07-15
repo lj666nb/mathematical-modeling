@@ -617,10 +617,47 @@
                   <p class="card-desc">基于 S0-S6 全部合约生成完整学术论文，检查格式合规性。</p>
                   <div class="btn-row">
                     <el-button type="primary" :loading="paperWritingLoading" :disabled="!isStepDone('S6')" @click="runPaperWriting" round>📝 {{ paperWritingLoading ? '生成中...' : '生成论文' }}</el-button>
+                    <el-button type="primary" :loading="paperStreaming" :disabled="!isStepDone('S6')" @click="startStreamingGeneration" round :style="{background: paperStreaming ? '#e74c3c' : '#165DFF', borderColor: paperStreaming ? '#e74c3c' : '#165DFF'}">
+                      📺 {{ paperStreaming ? '生成中...' : '分屏生成' }}
+                    </el-button>
                     <el-button type="warning" :loading="formatCheckLoading" :disabled="!isStepDone('S7')" @click="runFormatCheck" round>🔍 {{ formatCheckLoading ? '检查中...' : '格式检查' }}</el-button>
-                    <el-button type="success" :disabled="!paperData" @click="downloadPaper" round>📥 下载论文(MD)</el-button>
+                    <el-button type="success" :disabled="!paperData" @click="downloadPaper" round>📥 下载 MD</el-button>
+                    <el-button type="success" :disabled="!paperData" @click="downloadPaperDocx" round>📄 下载 Word</el-button>
                   </div>
                   <div v-if="!isStepDone('S6')" class="step-hint">⚠ 请先通过 S6 证据门禁</div>
+                  <div v-if="isStepDone('S7')" class="step-ok">✅ 论文已生成，可重新生成</div>
+
+                  <!-- 🆕 分屏流式预览 -->
+                  <div v-if="showSplitPreview" class="split-preview-container mt-3">
+                    <div class="split-toolbar">
+                      <span class="split-toolbar-title">📺 双栏实时生成预览</span>
+                      <span class="text-muted" style="font-size:12px;">
+                        {{ paperStreaming ? '⏳ 正在生成...' : '✅ 生成完成' }} |
+                        已生成 {{ streamWordCount.toLocaleString() }} 字
+                      </span>
+                      <el-button v-if="paperStreaming" size="small" type="danger" @click="stopStreaming" round>⏹ 停止生成</el-button>
+                      <el-button v-if="!paperStreaming && streamingPaperMd" size="small" type="success" @click="saveStreamedPaper" round>💾 保存论文</el-button>
+                      <el-button size="small" @click="closeSplitPreview" round>✕ 关闭</el-button>
+                    </div>
+                    <div class="split-panels">
+                      <!-- 左栏：AI 编辑区 -->
+                      <div class="split-editor-pane">
+                        <div class="split-pane-header">✏️ AI 编辑区（Markdown 原文）</div>
+                        <textarea
+                          class="split-editor-textarea"
+                          :value="streamingPaperMd"
+                          readonly
+                          placeholder="等待 AI 生成论文内容..."
+                          ref="streamEditorRef"
+                        ></textarea>
+                      </div>
+                      <!-- 右栏：实时渲染预览 -->
+                      <div class="split-preview-pane">
+                        <div class="split-pane-header">👁 实时预览（Word 风格排版）</div>
+                        <div class="paper-preview markdown-body" v-html="renderedStreamPreview"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div v-if="paperData" class="analysis-result">
@@ -632,7 +669,7 @@
                   <div v-if="formatCheckData" class="mt-4">
                     <div class="result-status" :class="formatCheckData.status === 'PASS' ? 'pass' : 'fail'">
                       <el-icon :size="18"><CircleCheck v-if="formatCheckData.status === 'PASS'" /><CircleClose v-else /></el-icon>
-                      <span>{{ formatCheckData.status === 'PASS' ? '格式检查通过' : '格式问题待修复' }}</span>
+                      <span>{{ formatCheckData.status === 'PASS' ? '格式检查通过！论文合格' : '格式问题待修复 — 请点击下方按钮自动修复' }}</span>
                     </div>
                     <div v-if="(formatCheckData.checks || []).length" class="mt-2">
                       <div v-for="(c, ci) in formatCheckData.checks" :key="ci" class="err-item" :class="c.status === 'FAIL' ? 'err' : c.status === 'WARN' ? 'warn' : ''">
@@ -640,11 +677,24 @@
                         <span style="font-size:var(--text-xs);">{{ c.detail }}</span>
                       </div>
                     </div>
+                    <!-- 🆕 修复论文按钮 -->
+                    <div v-if="hasFormatFailures" class="mt-3" style="text-align:center;padding:12px;background:var(--danger-bg);border-radius:10px;border:1px solid rgba(245,63,63,0.2);">
+                      <p style="font-size:var(--text-sm);color:var(--danger);font-weight:600;margin-bottom:10px;">
+                        ⚠️ 格式检查发现 {{ formatFailCount }} 项失败、{{ formatWarnCount }} 项警告，建议修复
+                      </p>
+                      <el-button type="danger" :loading="fixPaperLoading" :icon="Warning" @click="fixPaper" round>
+                        {{ fixPaperLoading ? '修复中...' : '🔧 修复并重新生成论文' }}
+                      </el-button>
+                      <p class="text-muted mt-2" style="margin-top:8px;">将自动补充缺失章节、扩充字数、增加代码和引用</p>
+                    </div>
                   </div>
 
                   <div class="mt-4" v-if="paperData.draft_paper">
-                    <h4 class="section-title">论文预览（前 1500 字）</h4>
-                    <pre class="paper-preview">{{ paperData.draft_paper?.substring(0, 1500) || '(空)' }}{{ (paperData.draft_paper || '').length > 1500 ? '\n\n... (内容过长，已截断)' : '' }}</pre>
+                    <div class="paper-toolbar">
+                      <span class="paper-toolbar-title">📄 论文预览</span>
+                      <span class="text-muted">{{ (paperData.draft_paper || '').length }} 字符</span>
+                    </div>
+                    <div class="paper-render markdown-body" v-html="renderedPaper"></div>
                   </div>
                 </div>
 
@@ -674,16 +724,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { competitionApi } from '../api'
 import Sidebar from '../components/Sidebar.vue'
+import { marked } from 'marked'
+import { renderAllMath } from '../composables/useKatex'
 import {
   HomeFilled, Trophy, Plus, UploadFilled, Document, Delete,
   CircleCheck, CircleClose, DataAnalysis, Guide, Lock,
-  Search, Coin, PictureFilled, Monitor, Finished, Clock
+  Search, Coin, PictureFilled, Monitor, Finished, Clock, Warning
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -714,6 +766,15 @@ const paperWritingLoading = ref(false)
 const paperData = ref(null)
 const formatCheckLoading = ref(false)
 const formatCheckData = ref(null)
+const fixPaperLoading = ref(false)  // 🆕 论文修复
+
+// 🆕 流式双栏生成
+const paperStreaming = ref(false)
+const streamingPaperMd = ref('')
+const showSplitPreview = ref(false)
+const abortController = ref(null)
+const streamWordCount = ref(0)
+
 const showCreateDialog = ref(false)
 const newTaskTitle = ref('')
 const creatingTask = ref(false)
@@ -747,6 +808,79 @@ const completedSteps = computed(() => {
     if (isStepDone(step)) count++
   }
   return count
+})
+
+// 🆕 论文渲染（Markdown + LaTeX + 图片）
+const renderedPaper = computed(() => {
+  const raw = paperData.value?.draft_paper
+  if (!raw) return '<p style="color:var(--text-tertiary);">(暂无内容)</p>'
+
+  // Step 1: 修复图片路径 — 将相对路径转为 API 端点
+  let processed = raw.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (match, alt, src) => {
+      // 跳过外部 URL
+      if (src.startsWith('http://') || src.startsWith('https://')) return match
+      // 提取文件名
+      const filename = src.split('/').pop()
+      const token = localStorage.getItem('token')
+      const apiUrl = `/api/competition/tasks/${activeTaskId.value}/figures/${filename}?token=${encodeURIComponent(token || '')}`
+      return `![${alt}](${apiUrl})`
+    }
+  )
+
+  // Step 2: 渲染 LaTeX 公式
+  processed = renderAllMath(processed)
+
+  // Step 3: 渲染 Markdown
+  let html = ''
+  try {
+    html = marked.parse(processed, { breaks: false, gfm: true })
+  } catch {
+    html = `<pre>${processed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>`
+  }
+
+  return html
+})
+
+// 🆕 流式预览渲染（与 renderedPaper 相同的管线）
+const renderedStreamPreview = computed(() => {
+  if (!streamingPaperMd.value) return '<p style="color:#999;text-align:center;padding:40px;">等待 AI 生成论文内容...</p>'
+  let md = streamingPaperMd.value
+  // Step 1: 修复图片路径
+  md = md.replace(
+    /!\[(.*?)\]\((?!https?:\/\/)(.*?)\)/g,
+    (_m, alt, src) => {
+      const filename = src.split('/').pop()
+      const token = localStorage.getItem('token')
+      const apiUrl = `/api/competition/tasks/${activeTaskId.value}/figures/${filename}?token=${encodeURIComponent(token || '')}`
+      return `![${alt}](${apiUrl})`
+    }
+  )
+  // Step 2: 渲染 LaTeX
+  md = renderAllMath(md)
+  // Step 3: 渲染 Markdown
+  let html = ''
+  try {
+    html = marked.parse(md, { breaks: false, gfm: true })
+  } catch {
+    html = `<pre>${md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>`
+  }
+  return html
+})
+
+// 🆕 格式检查失败统计
+const hasFormatFailures = computed(() => {
+  if (!formatCheckData.value?.checks) return false
+  return formatCheckData.value.checks.some(c => c.status === 'FAIL' || c.status === 'WARN')
+})
+const formatFailCount = computed(() => {
+  if (!formatCheckData.value?.checks) return 0
+  return formatCheckData.value.checks.filter(c => c.status === 'FAIL').length
+})
+const formatWarnCount = computed(() => {
+  if (!formatCheckData.value?.checks) return 0
+  return formatCheckData.value.checks.filter(c => c.status === 'WARN').length
 })
 
 // 断点恢复提示 (CMP-014)
@@ -1179,8 +1313,8 @@ async function runPaperWriting() {
   paperWritingLoading.value = true
   paperData.value = null
   try {
-    const res = await competitionApi.runPaperWriting(activeTaskId.value)
-    paperData.value = { draft_paper: res.draft_paper, paper: res.paper, word_count: res.word_count, sections_count: res.sections_count }
+    await competitionApi.runPaperWriting(activeTaskId.value)
+    // POST 不返回全文，通过 refreshTask → loadPaperFromDB GET 加载完整论文
     await refreshTask()
   } catch (e) {
     console.error(e)
@@ -1188,6 +1322,94 @@ async function runPaperWriting() {
   }
   finally { paperWritingLoading.value = false }
 }
+
+// ===== 🆕 流式双栏论文生成 =====
+
+async function startStreamingGeneration() {
+  if (!activeTaskId.value) return
+  paperStreaming.value = true
+  showSplitPreview.value = true
+  streamingPaperMd.value = ''
+  streamWordCount.value = 0
+
+  const ctrl = new AbortController()
+  abortController.value = ctrl
+
+  try {
+    const response = await competitionApi.streamPaperWriting(activeTaskId.value, ctrl.signal)
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const dataStr = line.slice(6)
+        try {
+          const data = JSON.parse(dataStr)
+          if (data.type === 'chunk') {
+            streamingPaperMd.value += data.content
+            streamWordCount.value = streamingPaperMd.value.replace(/\s/g, '').length
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      streamingPaperMd.value += '\n\n*[生成已停止]*'
+    } else {
+      streamingPaperMd.value += `\n\n*[连接错误: ${e.message}]*`
+    }
+  } finally {
+    paperStreaming.value = false
+    abortController.value = null
+    // 生成完成后刷新任务
+    await refreshTask()
+  }
+}
+
+function stopStreaming() {
+  if (abortController.value) {
+    abortController.value.abort()
+    abortController.value = null
+  }
+  paperStreaming.value = false
+}
+
+function closeSplitPreview() {
+  stopStreaming()
+  showSplitPreview.value = false
+  streamingPaperMd.value = ''
+}
+
+function saveStreamedPaper() {
+  // 将流式内容保存到 paperData 并退出分屏
+  if (streamingPaperMd.value) {
+    paperData.value = {
+      draft_paper: streamingPaperMd.value,
+      word_count: streamWordCount.value,
+      sections_count: (streamingPaperMd.value.match(/^##\s+/gm) || []).length,
+    }
+  }
+  showSplitPreview.value = false
+}
+
+// 🆕 自动滚动到流式编辑器底部
+const streamEditorRef = ref(null)
+watch(streamingPaperMd, () => {
+  if (streamEditorRef.value) {
+    streamEditorRef.value.scrollTop = streamEditorRef.value.scrollHeight
+  }
+})
+
+// ===== S7 论文加载 =====
 
 async function loadPaperFromDB() {
   if (!activeTaskId.value) return
@@ -1226,6 +1448,33 @@ async function loadFormatCheckFromDB() {
   } catch (e) { /* ignore */ }
 }
 
+// 🆕 修复论文（格式检查失败后自动修复）
+async function fixPaper() {
+  if (!activeTaskId.value) return
+  fixPaperLoading.value = true
+  try {
+    const res = await competitionApi.fixPaper(activeTaskId.value)
+    // 更新论文数据
+    paperData.value = {
+      draft_paper: '',
+      paper: res.paper,
+      word_count: res.word_count,
+      sections_count: res.sections_count,
+    }
+    // 🆕 直接用返回的格式检查结果更新（清除红色警告）
+    if (res.format_check && Object.keys(res.format_check).length > 0) {
+      formatCheckData.value = res.format_check
+    }
+    // 刷新任务状态和论文全文
+    await refreshTask()
+    ElMessage.success('论文已修复！格式检查：' + (res.format_check?.status === 'PASS' ? '✅ 通过' : '⚠️ 仍有问题'))
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('论文修复失败: ' + (e.response?.data?.detail || e.message))
+  }
+  finally { fixPaperLoading.value = false }
+}
+
 // ===== 论文下载 =====
 
 function downloadPaper() {
@@ -1237,6 +1486,21 @@ function downloadPaper() {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
+}
+
+// 🆕 下载 Word 版本
+function downloadPaperDocx() {
+  if (!activeTaskId.value) return
+  const token = localStorage.getItem('token')
+  const a = document.createElement('a')
+  // 加时间戳防缓存
+  const ts = Date.now()
+  a.href = `/api/competition/tasks/${activeTaskId.value}/paper/download-docx?token=${encodeURIComponent(token || '')}&t=${ts}`
+  a.download = `paper_task${activeTaskId.value}.docx`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  ElMessage.success('正在下载 Word 文档...')
 }
 
 // ===== 辅助函数 =====
@@ -1671,15 +1935,59 @@ $step-grads: (
 
 // ===========================================
 // 11. 论文预览
+// 11. 论文预览 — Markdown + LaTeX 全文渲染
 // ===========================================
-.paper-preview {
-  background: var(--bg-primary); border: 1px solid var(--border-light);
-  border-radius: 10px; padding: 14px 18px;
-  font-size: var(--text-xs); line-height: 1.7;
-  white-space: pre-wrap; word-break: break-word;
-  max-height: 320px; overflow-y: auto;
-  font-family: var(--font-body);
-  color: var(--text-secondary);
+.paper-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: var(--bg-tertiary);
+  border-radius: 10px 10px 0 0; border: 1px solid var(--border-light);
+  border-bottom: none;
+}
+.paper-toolbar-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); }
+
+.paper-render {
+  background: #fff; border: 1px solid var(--border-light);
+  border-top: none; border-radius: 0 0 10px 10px;
+  padding: 28px 32px;
+  max-height: 70vh; overflow-y: auto;
+  font-size: var(--text-sm); line-height: 1.9; color: var(--text-primary);
+
+  h1 { font-size: var(--text-xl); font-weight: 700; margin: 1.2em 0 0.6em; color: var(--text-primary);
+       padding-bottom: 0.4em; border-bottom: 2px solid var(--primary); }
+  h2 { font-size: var(--text-lg); font-weight: 700; margin: 1em 0 0.5em; color: var(--text-primary);
+       padding-bottom: 0.3em; border-bottom: 1px solid var(--border-light); }
+  h3 { font-size: var(--text-md); font-weight: 600; margin: 0.8em 0 0.4em; color: var(--text-primary); }
+  h4 { font-size: var(--text-sm); font-weight: 600; margin: 0.6em 0 0.3em; color: var(--text-secondary); }
+  p { margin-bottom: 0.8em; text-align: justify; }
+  strong { font-weight: 700; color: var(--text-primary); }
+  em { font-style: italic; }
+  ul, ol { padding-left: 1.8em; margin: 0.5em 0; }
+  li { margin-bottom: 0.25em; }
+  li > ul, li > ol { margin-top: 0.25em; }
+  blockquote {
+    margin: 0.8em 0; padding: 0.6em 1em;
+    border-left: 3px solid var(--primary);
+    background: var(--primary-light);
+    border-radius: 0 6px 6px 0; color: var(--text-secondary);
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: var(--text-xs);
+    th { background: var(--bg-tertiary); font-weight: 600; text-align: left;
+         padding: 8px 12px; border: 1px solid var(--border-light); }
+    td { padding: 6px 12px; border: 1px solid var(--border-light); }
+    tbody tr:nth-child(even) td { background: #FAFBFC; }
+  }
+  code { background: #F0F1F5; padding: 2px 6px; border-radius: 4px;
+         font-size: 0.9em; font-family: var(--font-mono); color: #D63384; }
+  pre { background: #F2F3F8; padding: 12px 16px; border-radius: 8px;
+        overflow-x: auto; margin: 0.8em 0;
+        code { background: none; padding: 0; color: inherit; } }
+  hr { border: none; border-top: 1px solid var(--border-light); margin: 1.2em 0; }
+  a { color: var(--primary); text-decoration: underline; }
+  img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.6em 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.3em 0; margin: 0.5em 0; }
+  .katex { font-size: 1.05em; }
 }
 
 // ===========================================
@@ -1792,4 +2100,92 @@ $step-grads: (
   background: var(--primary-light); padding: 3px 10px; border-radius: 20px;
   font-weight: 500;
 }
+
+/* ========== 🆕 流式双栏预览 ========== */
+.split-preview-container {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.split-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+.split-toolbar-title {
+  font-weight: 700; font-size: 14px; color: var(--primary);
+}
+.split-panels {
+  display: flex; height: 75vh; min-height: 500px;
+}
+.split-editor-pane, .split-preview-pane {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+.split-editor-pane {
+  border-right: 2px solid var(--border);
+  background: #1e1e1e;
+}
+.split-preview-pane {
+  background: #f8f9fa;
+}
+.split-pane-header {
+  padding: 8px 12px;
+  font-size: 12px; font-weight: 600; color: #666;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.split-editor-pane .split-pane-header {
+  background: #2d2d2d; color: #ccc;
+}
+.split-editor-textarea {
+  flex: 1; width: 100%; border: none; outline: none; resize: none;
+  background: #1e1e1e; color: #d4d4d4;
+  font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 13px; line-height: 1.6;
+  padding: 16px; overflow-y: auto;
+}
+.split-editor-textarea::placeholder {
+  color: #666;
+}
+.split-preview-pane .paper-preview {
+  flex: 1; padding: 24px 32px; overflow-y: auto;
+  max-width: 800px; margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  font-family: '宋体', SimSun, serif;
+  font-size: 14px; line-height: 1.8;
+}
+.split-preview-pane .paper-preview :deep(h1) {
+  font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 16px; font-family: '黑体', SimHei, sans-serif;
+}
+.split-preview-pane .paper-preview :deep(h2) {
+  font-size: 18px; font-weight: 700; margin-top: 24px; margin-bottom: 12px; font-family: '黑体', SimHei, sans-serif; border-bottom: 1px solid #eee; padding-bottom: 6px;
+}
+.split-preview-pane .paper-preview :deep(h3) {
+  font-size: 15px; font-weight: 600; margin-top: 18px; margin-bottom: 8px;
+}
+.split-preview-pane .paper-preview :deep(table) {
+  border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12px;
+}
+.split-preview-pane .paper-preview :deep(th), .split-preview-pane .paper-preview :deep(td) {
+  border: 1px solid #333; padding: 4px 8px; text-align: center;
+}
+.split-preview-pane .paper-preview :deep(th) {
+  background: #f0f0f0; font-weight: 600;
+}
+.split-preview-pane .paper-preview :deep(pre) {
+  background: #f5f5f5; border-left: 4px solid #4472C4; padding: 12px 16px;
+  overflow-x: auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 11px;
+  line-height: 1.4; margin: 10px 0;
+}
+.split-preview-pane .paper-preview :deep(.katex-display) {
+  overflow-x: auto; overflow-y: hidden;
+}
+.split-preview-pane .paper-preview :deep(img) {
+  max-width: 100%; height: auto; display: block; margin: 8px auto;
+}
 </style>
+

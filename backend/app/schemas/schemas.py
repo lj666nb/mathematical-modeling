@@ -15,8 +15,8 @@ class UserRegister(BaseModel):
     """用户注册请求"""
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     password: str = Field(
-        ..., min_length=8, max_length=100,
-        description="密码(≥8位+数字+字母)"
+        ..., min_length=6, max_length=100,
+        description="密码(≥6位)"
     )
     role: str = Field(default="student", description="角色: student/teacher")
     class_name: str = Field(default="", description="班级")

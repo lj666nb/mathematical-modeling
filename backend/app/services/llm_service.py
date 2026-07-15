@@ -298,7 +298,8 @@ async def call_llm_api(
     user_id: int = 0,
     config_id: Optional[int] = None,
     use_cache: bool = True,
-    function_name: str = "chat"
+    function_name: str = "chat",
+    max_tokens: int = 0,  # 0=使用配置默认值，>0=覆盖
 ) -> Dict[str, Any]:
     """
     调用LLM API的核心函数（增强版）
@@ -340,7 +341,7 @@ async def call_llm_api(
         "model": model_name,
         "messages": msgs,
         "temperature": config.temperature or 0.7,
-        "max_tokens": config.max_tokens or 4096,
+        "max_tokens": max_tokens or config.max_tokens or 4096,
     }
 
     # 生成缓存键
@@ -367,7 +368,7 @@ async def call_llm_api(
     usage = {}
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=600.0) as client:  # 50页代码需要更长超时
             response = await client.post(api_url, json=request_data, headers=headers)
             elapsed = time.time() - start_time
 
@@ -426,6 +427,141 @@ async def call_llm_api(
         )
 
     return result_data
+
+
+async def call_llm_api_stream(
+    messages: list,
+    system_prompt: str = "",
+    db: Optional[AsyncSession] = None,
+    user_id: int = 0,
+    config_id: Optional[int] = None,
+    function_name: str = "stream",
+    max_tokens: int = 0,
+):
+    """
+    流式调用 LLM API（async generator）
+
+    使用 httpx client.stream() + OpenAI 兼容 SSE 格式，逐 token yield。
+    每个 yield 为 dict：{"type": "token", "content": "..."}
+    结束时 yield：{"type": "done", "content": full_text, "usage": {...}}
+    错误时 yield：{"type": "error", "content": "error message"}
+
+    Args:
+        messages: 对话消息列表
+        system_prompt: 系统提示词
+        db: 数据库会话（用于审计日志）
+        user_id: 用户ID
+        config_id: 指定配置ID
+        function_name: 功能名称
+        max_tokens: 最大输出token数（0=使用默认）
+    """
+    import json as _json
+    import time as _time
+
+    config = await _resolve_llm_config(db, user_id, config_id)
+    if not config:
+        yield {"type": "error", "content": "请先在「API配置」页面添加并激活您的LLM API配置"}
+        return
+
+    base_url = config.base_url
+    if not base_url:
+        yield {"type": "error", "content": f"不支持的厂商: {config.provider}"}
+        return
+
+    msgs = []
+    if system_prompt:
+        msgs.append({"role": "system", "content": system_prompt})
+    msgs.extend(messages)
+
+    model_name = config.model_name or PROVIDER_DEFAULT_MODELS.get(config.provider, "gpt-4o-mini")
+    request_data = {
+        "model": model_name,
+        "messages": msgs,
+        "temperature": config.temperature or 0.7,
+        "max_tokens": max_tokens or config.max_tokens or 4096,
+        "stream": True,
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.api_key}"
+    }
+    api_url = f"{base_url.rstrip('/')}/chat/completions"
+
+    full_content = ""
+    start_time = _time.time()
+    usage = {}
+
+    try:
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            async with client.stream("POST", api_url, json=request_data, headers=headers) as response:
+                if response.status_code != 200:
+                    error_body = ""
+                    try:
+                        error_body = await response.aread()
+                        error_body = error_body.decode()[:500]
+                    except Exception:
+                        pass
+                    yield {"type": "error", "content": f"API错误 (HTTP {response.status_code}): {error_body}"}
+                    return
+
+                async for line in response.aiter_lines():
+                    if not line or not line.strip():
+                        continue
+                    stripped = line.strip()
+                    if not stripped.startswith("data: "):
+                        continue
+                    data_str = stripped[6:]
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        data = _json.loads(data_str)
+                        choices = data.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            token = delta.get("content", "")
+                            if token:
+                                full_content += token
+                                yield {"type": "token", "content": token}
+                        # Capture usage from final chunk
+                        if data.get("usage"):
+                            usage = data["usage"]
+                    except (_json.JSONDecodeError, KeyError, IndexError):
+                        continue
+
+    except httpx.TimeoutException:
+        elapsed = _time.time() - start_time
+        yield {"type": "error", "content": "API请求超时（600秒），论文生成时间过长，请尝试减少输出长度"}
+    except httpx.ConnectError:
+        yield {"type": "error", "content": f"无法连接到 {base_url}，请检查API地址"}
+    except Exception as e:
+        yield {"type": "error", "content": f"流式请求异常: {str(e)}"}
+
+    # Cache successful response
+    if full_content:
+        try:
+            cache_key = _make_cache_key(messages, system_prompt, model_name, config.temperature or 0.7)
+            await _set_cached_response(cache_key, {
+                "success": True, "content": full_content, "model": model_name, "from_cache": False
+            })
+        except Exception:
+            pass
+
+    # Audit log
+    elapsed = _time.time() - start_time
+    if db is not None and user_id > 0:
+        await _log_llm_call(
+            db=db, user_id=user_id, model=model_name,
+            function_name=function_name,
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
+            latency_ms=round(elapsed * 1000, 2),
+            success=bool(full_content),
+            error_message="" if full_content else "stream produced no content"
+        )
+
+    yield {"type": "done", "content": full_content, "usage": usage}
 
 
 async def test_llm_connection(

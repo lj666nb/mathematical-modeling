@@ -91,9 +91,19 @@ const userStore = useUserStore()
 const loading = ref(false)
 let _lock = false
 
-onMounted(() => {
-  if (localStorage.getItem('token')) {
-    router.push('/dashboard')
+onMounted(async () => {
+  // 有旧token时先验证有效性，避免直接跳转导致401循环
+  const savedToken = localStorage.getItem('token')
+  if (savedToken) {
+    try {
+      await authApi.verifyToken()
+      // token有效，直接跳转
+      router.push('/dashboard')
+    } catch (_) {
+      // token失效，静默清理（不弹错误提示）
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+    }
   }
 })
 

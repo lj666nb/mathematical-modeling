@@ -14,10 +14,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TZ=Asia/Shanghai
 
-# 安装系统依赖（curl 用于健康检查，中文字体用于matplotlib图表）
+# 安装系统依赖
+# curl: 健康检查 | fonts-wqy-microhei: 中文字体 | pandoc: Markdown→DOCX
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     fonts-wqy-microhei \
+    pandoc \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件并安装Python包

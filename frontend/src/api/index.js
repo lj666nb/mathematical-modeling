@@ -22,7 +22,7 @@ function clearAuthCache() {
 // 创建axios实例
 const request = axios.create({
   baseURL: '/api',
-  timeout: 120000,
+  timeout: 600000,  // 10分钟，论文生成等LLM调用耗时长
   headers: {
     'Content-Type': 'application/json'
   }
@@ -68,28 +68,49 @@ request.interceptors.response.use(
   error => {
     const status = error.response?.status
     const detail = error.response?.data?.detail || error.message
+    const url = error.config?.url || ''
+
+    // 判断是否为登录/注册相关请求 — 这些401由页面自行处理
+    const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/verify-token')
 
     if (status === 401) {
-      // Bug1修复：全局防抖锁，3秒内只触发1次
+      // 登录/注册接口的401由页面自行处理，不触发全局拦截
+      if (isAuthRequest) {
+        return Promise.reject(error)
+      }
+
+      // 判断当前是否已在登录/注册页面，避免重复跳转
+      let isOnAuthPage = false
+      try {
+        const currentPath = window.location.hash?.replace('#', '') || window.location.pathname
+        isOnAuthPage = currentPath === '/login' || currentPath === '/register'
+      } catch (_) { /* ignore */ }
+
+      if (isOnAuthPage) {
+        // 已经在登录页，不弹窗不跳转，只清理旧缓存
+        clearAuthCache()
+        return Promise.reject(error)
+      }
+
+      // 在其他页面遇到401 → 过期处理
       if (!_authRedirecting) {
         _authRedirecting = true
 
         // 清除全部登录缓存
         clearAuthCache()
 
-        // 只触发1次错误弹窗
+        // 3秒内只弹1次
         ElMessage.error({
           message: '登录已过期，请重新登录',
           duration: 3000,
           onClose: () => { _authRedirecting = false }
         })
 
-        // 延迟跳转，确保弹窗渲染完成
+        // 延迟跳转
         setTimeout(() => {
           import('../router').then(mod => {
             mod.default.push('/login')
           })
-          // 3秒后解锁
           setTimeout(() => { _authRedirecting = false }, 3000)
         }, 300)
       }
@@ -230,6 +251,17 @@ export const competitionApi = {
   // S7 格式检查
   runFormatCheck(taskId) { return request.post(`/competition/tasks/${taskId}/format-check`) },
   getFormatCheck(taskId) { return request.get(`/competition/tasks/${taskId}/format-check`) },
+  fixPaper(taskId) { return request.post(`/competition/tasks/${taskId}/fix-paper`) },
+
+  // 🆕 流式论文生成（SSE）
+  async streamPaperWriting(taskId, signal) {
+    const token = localStorage.getItem('token')
+    return fetch(`/api/competition/tasks/${taskId}/paper-writing/stream?token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+    })
+  },
 }
 
 // ==================== 代码执行接口 ====================

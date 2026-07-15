@@ -78,7 +78,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="至少8位密码"
+            placeholder="至少6位密码"
             :prefix-icon="Lock"
             show-password
             @input="onPasswordInput"
@@ -249,7 +249,7 @@ const validateUsername = (rule, value, callback) => {
 
 const validatePassword = (rule, value, callback) => {
   if (!value) return callback(new Error('请输入密码'))
-  if (value.length < 8) return callback(new Error('密码至少8位'))
+  if (value.length < 6) return callback(new Error('密码至少6位'))
   callback()
 }
 

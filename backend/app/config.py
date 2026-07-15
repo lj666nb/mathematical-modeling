@@ -27,16 +27,16 @@ class Settings(BaseSettings):
     # ⚠️ SECURITY: 生产环境必须通过环境变量注入，无默认值则拒绝启动
     JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION_HOURS: int = 24
+    JWT_EXPIRATION_HOURS: int = 876000  # 100年，永久有效
 
     # 数据加密密钥（用于API密钥等敏感字段的DB静态加密）
     # ⚠️ 生产环境必须通过环境变量注入，开发环境自动生成并持久化到 data/.encryption_key
     DATA_ENCRYPTION_KEY: str = ""
 
     # 密码强度配置
-    PASSWORD_MIN_LENGTH: int = 8
-    PASSWORD_REQUIRE_DIGIT: bool = True
-    PASSWORD_REQUIRE_LETTER: bool = True
+    PASSWORD_MIN_LENGTH: int = 6
+    PASSWORD_REQUIRE_DIGIT: bool = False
+    PASSWORD_REQUIRE_LETTER: bool = False
 
     # 登录安全配置
     LOGIN_RATE_LIMIT: str = "5/minute"  # 登录接口限流

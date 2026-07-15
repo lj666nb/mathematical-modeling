@@ -44,27 +44,44 @@ _CHINESE_FONT_CANDIDATES = [
 
 _READY = False
 _FONT_NAME = None
+_FONT_PROP = None  # global Chinese font properties
+
+def _get_font():
+    """Get global Chinese font properties for explicit text element use"""
+    _init_matplotlib()
+    return _FONT_PROP
 
 def _init_matplotlib():
-    """初始化 matplotlib 中文支持"""
-    global _READY, _FONT_NAME
+    """Init matplotlib Chinese support via font file path (most reliable)"""
+    global _READY, _FONT_NAME, _FONT_PROP
     if _READY:
         return
 
-    # 查找可用中文字体
-    available = {f.name for f in font_manager.fontManager.ttflist}
-    for candidate in _CHINESE_FONT_CANDIDATES:
-        if candidate in available:
-            _FONT_NAME = candidate
-            break
+    _WQY_PATH = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"
+    try:
+        from pathlib import Path as _P
+        if _P(_WQY_PATH).exists():
+            font_manager.fontManager.addfont(_WQY_PATH)
+            _FONT_PROP = font_manager.FontProperties(fname=_WQY_PATH, size=11)
+            _FONT_NAME = _FONT_PROP.get_name()
+            plt.rcParams["font.family"] = _FONT_NAME
+            plt.rcParams["font.sans-serif"] = [_FONT_NAME, "DejaVu Sans"]
+    except Exception:
+        pass
 
-    if _FONT_NAME:
-        plt.rcParams["font.sans-serif"] = [_FONT_NAME, "DejaVu Sans"]
-    else:
-        # 回退：尝试使用 sans-serif
+    if not _FONT_PROP:
+        for f in font_manager.fontManager.ttflist:
+            if 'WenQuanYi' in f.name or 'Micro Hei' in f.name:
+                _FONT_PROP = font_manager.FontProperties(fname=f.fname, size=11)
+                _FONT_NAME = _FONT_PROP.get_name()
+                plt.rcParams["font.family"] = _FONT_NAME
+                plt.rcParams["font.sans-serif"] = [_FONT_NAME, "DejaVu Sans"]
+                break
+
+    if not _FONT_NAME:
         plt.rcParams["font.sans-serif"] = ["DejaVu Sans"]
 
-    plt.rcParams["axes.unicode_minus"] = False  # 解决负号显示问题
+    plt.rcParams["axes.unicode_minus"] = False
     plt.rcParams["figure.dpi"] = 200
     plt.rcParams["savefig.dpi"] = 200
     plt.rcParams["savefig.bbox"] = "tight"
@@ -75,17 +92,7 @@ def _init_matplotlib():
     plt.rcParams["legend.fontsize"] = 9
     plt.rcParams["xtick.labelsize"] = 9
     plt.rcParams["ytick.labelsize"] = 9
-
-    # Seaborn 样式
-    try:
-        import seaborn as sns
-        sns.set_style("whitegrid")
-        sns.set_palette("Set2")
-    except ImportError:
-        pass
-
     _READY = True
-
 
 # ---- 颜色方案 ----
 COLOR_PALETTE = ["#2c6fce", "#d9782b", "#4a9b3f", "#c44e52", "#8b5ea8", "#55a5b5"]

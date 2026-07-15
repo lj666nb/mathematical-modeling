@@ -852,6 +852,25 @@ def _extract_constraints(text: str) -> list[str]:
 # CompetitionService 主类
 # ============================================================
 
+# ============================================================
+# S7 论文系统提示词 — 批量生成与流式生成共享
+# ============================================================
+
+S7_SYSTEM_PROMPT = """你是一位全国大学生数学建模竞赛国奖论文写作专家。你精通的领域包括：
+- 数学建模各类型（预测、优化、评价、分类、聚类、仿真）
+- 学术论文写作规范
+- LaTeX公式排版
+- 数据可视化与结果呈现
+
+请撰写一篇能获得国家一等奖水平的完整学术论文。核心原则：
+1. 每个结论都有数据支撑
+2. 每个模型都有理论依据
+3. 每个图表都有具体分析和引用
+4. 逻辑闭环：问题→模型→求解→验证→结论
+5. 学术语言精准，避免口语化和模板套话
+6. 图表引用要具体，不要模糊带过
+7. 创新点要明确，体现建模深度"""
+
 class CompetitionService:
     """竞赛工作流服务 — 管理 S0-S8 全流程"""
 
@@ -4348,20 +4367,7 @@ if __name__ == "__main__":
 
                 llm_result = await call_llm_api(
                     messages=messages,
-                    system_prompt="""你是一位全国大学生数学建模竞赛国奖论文写作专家。你精通的领域包括：
-- 数学建模各类型（预测、优化、评价、分类、聚类、仿真）
-- 学术论文写作规范
-- LaTeX公式排版
-- 数据可视化与结果呈现
-
-请撰写一篇能获得国家一等奖水平的完整学术论文。核心原则：
-1. 每个结论都有数据支撑
-2. 每个模型都有理论依据
-3. 每个图表都有具体分析和引用
-4. 逻辑闭环：问题→模型→求解→验证→结论
-5. 学术语言精准，避免口语化和模板套话
-6. 图表引用要具体，不要模糊带过
-7. 创新点要明确，体现建模深度""",
+                    system_prompt=S7_SYSTEM_PROMPT,
                     db=self.db,
                     user_id=self.user_id,
                     function_name="competition_s7_paper_writing",
@@ -4776,6 +4782,154 @@ if __name__ == "__main__":
 
     # ============================================================
     # S7 格式门禁
+    async def stream_paper_writing(self, task_id: int, system_prompt: str = ""):
+        """
+        流式 S7 论文生成（async generator）
+        逐个 token yield SSE 事件，前端实时渲染双栏预览。
+        完成后自动保存 draft_paper.md + 更新 DB。
+        """
+        from app.models.models import CompetitionTask
+        from app.services.llm_service import call_llm_api_stream
+
+        result = await self.db.execute(
+            select(CompetitionTask).where(
+                CompetitionTask.id == task_id,
+                CompetitionTask.user_id == self.user_id,
+            )
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            yield {"type": "error", "content": f"任务不存在: {task_id}"}
+            return
+
+        if task.status not in ("s6_completed", "s7_completed", "s6_failed", "s7_check_passed"):
+            yield {"type": "error", "content": f"S7 需要 S6 已完成，当前状态: {task.status}"}
+            return
+
+        root = self._task_dir(task_id)
+        now_ts = datetime.now().isoformat(timespec="seconds")
+        questions = self._extract_questions(task)
+        problem_analysis = self._load_json_file(root / "step1" / "problem_analysis.json")
+        model_route = self._load_json_file(root / "plan" / "model_route.json")
+        data_plan = self._load_json_file(root / "plan" / "data_plan.json")
+        model_results = self._load_json_file(root / "results" / "model_results.json")
+        metrics_data = self._load_json_file(root / "results" / "metrics.json")
+        conclusions_data = self._load_json_file(root / "results" / "conclusions.json")
+        table_index = self._load_json_file(root / "tables" / "table_index.json")
+        figure_index = self._load_json_file(root / "figure_index.json")
+
+        if not questions:
+            yield {"type": "error", "content": "未找到问题列表，请先完成 S1 赛题分析"}
+            return
+
+        paper_title = task.title or "数学建模论文"
+        if problem_analysis:
+            pa_title = problem_analysis.get("problem_title", "") or paper_title
+            if pa_title and pa_title != "未命名赛题":
+                paper_title = pa_title
+
+        # Build context (same as run_paper_writing)
+        context_parts = []
+        available_fig_list = []
+
+        if problem_analysis:
+            excerpt = problem_analysis.get("problem_text_excerpt", "")
+            if excerpt and excerpt.strip():
+                context_parts.append(f"## 赛题原文\n\n{self._smart_truncate(excerpt, 5000)}")
+
+        q_info = [{"id": q.get("question_id", ""), "title": q.get("title", ""),
+                    "task_type": q.get("task_type", ""),
+                    "core_goal": q.get("core_goal", q.get("summary", "")),
+                    "constraints": q.get("constraints", [])[:5]} for q in questions]
+        context_parts.append(f"## 赛题分析\n\n{self._smart_truncate(json.dumps(q_info, ensure_ascii=False, indent=2), 5000)}")
+
+        if model_route:
+            route_summary = []
+            for mq in (model_route.get("questions", []) or []):
+                route_summary.append({
+                    "question_id": mq.get("question_id"),
+                    "baseline": mq.get("baseline_model", ""),
+                    "main_model": mq.get("main_model", ""),
+                    "model_reason": mq.get("model_reason", "")[:150],
+                    "validation": mq.get("validation", []),
+                })
+            context_parts.append(f"## 模型路线\n\n{self._smart_truncate(json.dumps(route_summary, ensure_ascii=False, indent=2), 5000)}")
+
+        if data_plan:
+            stats = data_plan.get("statistics", {})
+            if stats:
+                context_parts.append(f"## 数据统计\n\n{self._smart_truncate(json.dumps(stats, ensure_ascii=False, indent=2), 4000)}")
+
+        if figure_index:
+            figs = figure_index.get("figures", [])
+            existing_figs = [f for f in figs if f.get("exists")]
+            if existing_figs:
+                fig_refs = []
+                for f in existing_figs[:20]:
+                    fname = Path(f.get("path", "")).name
+                    available_fig_list.append(fname)
+                    fig_refs.append({"filename": fname, "title": f.get("title", ""),
+                                     "question_id": f.get("question_id", ""),
+                                     "type": f.get("chart_type", "")})
+                context_parts.append(
+                    f"## 可用图表（必须使用以下精确文件名引用）\n"
+                    f"{self._smart_truncate(json.dumps(fig_refs, ensure_ascii=False, indent=2), 4000)}\n"
+                    f"图片文件名清单: {', '.join(available_fig_list)}"
+                )
+
+        context_text = "\n\n".join(context_parts)
+        user_prompt = f"请根据以下数学建模全过程资料，撰写一篇能获得全国大学生数学建模竞赛一等奖水平的完整学术论文（Markdown格式）。\n\n{context_text}\n\n请直接输出完整论文，从标题开始。"
+
+        yield {"type": "start", "content": "论文生成已启动..."}
+
+        full_paper = ""
+        async for event in call_llm_api_stream(
+            messages=[{"role": "user", "content": user_prompt}],
+            system_prompt=system_prompt,
+            db=self.db, user_id=self.user_id,
+            function_name="competition_s7_paper_stream",
+            max_tokens=49152,
+        ):
+            if event["type"] == "token":
+                full_paper += event["content"]
+                yield {"type": "chunk", "content": event["content"]}
+            elif event["type"] == "error":
+                yield event
+                return
+            elif event["type"] == "done":
+                full_paper = event.get("content", full_paper)
+
+        if len(full_paper) < 500:
+            yield {"type": "error", "content": "LLM 生成的论文内容过短（<500字符），请重试"}
+            return
+
+        draft_path = root / "draft_paper.md"
+        draft_path.write_text(full_paper, encoding="utf-8")
+
+        total_words = len(full_paper.replace(" ", "").replace("\n", ""))
+        section_titles = re.findall(r"^##\s+(.+)$", full_paper, re.MULTILINE)
+        figure_refs_count = len(re.findall(r"!\[.*?\]\(.*?\)", full_paper))
+
+        paper_meta = {
+            "schema_version": "1.0", "generated_at": now_ts, "title": paper_title,
+            "sections_count": len(section_titles), "sections": section_titles,
+            "word_count": total_words,
+            "path": f"paper_output/{task_id}/draft_paper.md",
+            "questions_count": len(questions),
+            "has_figures": bool(figure_index.get("figures")) if isinstance(figure_index, dict) else False,
+            "figure_refs_in_paper": figure_refs_count,
+            "generation_method": "LLM+streaming",
+        }
+        (root / "paper_meta.json").write_text(json.dumps(paper_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        task.draft_paper = json.dumps(paper_meta, ensure_ascii=False)
+        task.current_step = "S7"
+        task.status = "s7_completed"
+        await self.db.commit()
+
+        yield {"type": "done", "content": full_paper, "word_count": total_words,
+               "sections_count": len(section_titles), "figure_refs": figure_refs_count}
+
     # ============================================================
 
     async def run_format_check(self, task_id: int) -> dict:

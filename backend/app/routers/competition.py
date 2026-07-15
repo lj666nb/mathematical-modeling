@@ -16,7 +16,7 @@
 ============================================================
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -703,6 +703,36 @@ async def get_format_check(
     }
 
 
+# ==================== S7 论文修复 ====================
+
+@router.post("/tasks/{task_id}/fix-paper")
+async def fix_paper(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    🆕 S7 论文修复：根据格式检查失败项，调用 LLM 修复论文并自动重新格式检查
+
+    工作流程：
+    1. 读取当前论文草稿 + 格式检查失败项
+    2. 收集建模代码文件
+    3. LLM 修复论文（补充缺失章节、扩充字数、增加代码、修复格式问题）
+    4. 自动重新运行格式检查
+    """
+    service = CompetitionService(db, current_user.id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    try:
+        result = await service.fix_paper(task_id)
+        return result
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"论文修复失败：{str(e)}")
+
+
 # ==================== 论文下载 ====================
 
 @router.get("/tasks/{task_id}/paper/download")
@@ -748,6 +778,177 @@ async def download_paper(
         path=str(md_path),
         filename=f"paper_task{task_id}.md",
         media_type="text/markdown; charset=utf-8",
+    )
+
+
+@router.get("/tasks/{task_id}/paper/download-docx")
+async def download_paper_docx(
+    task_id: int,
+    token: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    🆕 下载论文草稿文件（Word .docx 格式），图表嵌入文中
+
+    返回 paper_output/{task_id}/draft_paper.docx
+    """
+    from pathlib import Path as FilePath
+    from app.routers.auth import decode_access_token
+    from app.models.models import User
+    from sqlalchemy import select as sa_select
+    from app.services.paper_export import convert_md_to_docx
+
+    if not token:
+        raise HTTPException(status_code=401, detail="需要认证令牌(?token=)")
+
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="无效的令牌载荷")
+
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    service = CompetitionService(db, user_id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    root = FilePath("paper_output") / str(task_id)
+    md_path = root / "draft_paper.md"
+    if not md_path.exists():
+        raise HTTPException(status_code=404, detail="论文草稿不存在，请先运行 S7 论文生成")
+
+    docx_path = root / "draft_paper.docx"
+    figures_dir = root / "figures"
+
+    # 转换 MD → DOCX
+    try:
+        md_text = md_path.read_text(encoding="utf-8")
+        title = task.get("title", "数学建模论文") if isinstance(task, dict) else "数学建模论文"
+        convert_md_to_docx(md_text, figures_dir, docx_path, title)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文档转换失败：{str(e)}")
+
+    return FileResponse(
+        path=str(docx_path),
+        filename=f"paper_task{task_id}.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+# ==================== 流式论文生成 ====================
+
+@router.post("/tasks/{task_id}/paper-writing/stream")
+async def stream_paper_writing(
+    task_id: int,
+    token: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    流式 S7 论文生成（SSE）
+    返回 text/event-stream，前端实时渲染双栏预览。
+    每生成一段 token 就推送一段，完成后自动保存 draft_paper.md + 更新 DB。
+    支持 AbortController 中断生成。
+    """
+    from pathlib import Path as FilePath
+    from app.routers.auth import decode_access_token
+    from app.models.models import User
+    from sqlalchemy import select as sa_select
+    import json as _json
+    import asyncio
+
+    if not token:
+        raise HTTPException(status_code=401, detail="需要认证令牌(?token=)")
+
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="无效的令牌载荷")
+
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    service = CompetitionService(db, user_id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # S7 系统提示词（与 run_paper_writing 共用）
+    S7_PROMPT = """【角色设定】
+你是获得过"全国大学生数学建模竞赛一等奖"的资深选手，同时兼任运筹学/应用数学领域的顶刊审稿人。你的写作风格极其严谨、量化、拒绝空话。
+
+【核心任务】
+根据提供的竞赛题目原文与建模过程资料，撰写一篇完整的数模竞赛论文（含摘要、模型建立、求解、分析）。
+
+【强制的第一步：要素普查】
+在动笔写论文正文前，你必须先从提供的资料中提取以下硬性数值与公式，并在论文中显式引用：
+1. 提取所有具体经济成本（启动成本、燃油单价、电价、时间窗惩罚费率、碳排放单价等）
+2. 提取所有物理/几何约束（圆形区域半径、禁行时段等）
+3. 提取所有车辆参数（载重、容积、车型数量等）
+4. 提取所有速度/能耗函数的具体公式
+5. 提取所有时间窗数据特征（服务时间等）
+
+【论文撰写硬性规范】
+1. **符号系统**：模型建立部分必须采用运筹学标准符号。
+2. **目标函数**：必须展开成具体项相加。每一项的系数必须带出具体数值。
+3. **约束条件**：必须写出具体的数学不等式/等式，不得用文字描述替代。
+4. **算法名称**：必须明确写出具体算法（如遗传算法GA、禁忌搜索TS、自适应大邻域搜索ALNS），并写明编码方式。
+5. **正文（摘要到模型评价）≥ 1.6万字（中文计）**，附录代码不计入正文。
+6. **禁止占位符**（"待填写"、"TODO"等），所有数值必须具体。
+7. **图表引用**：`![描述性标题](figures/fig_xxx.png)`，文件名必须使用上下文提供的精确文件名，禁止自创。
+8. **代码完整性**：每个子问题必须附完整可独立运行的 Python 代码。禁止 `...`、`pass`、`# 省略`。
+9. **标题层级**：只使用 `#`、`##`、`###`，禁止 `####` 及更深层级。
+10. **公式格式**：所有数学公式用 `$...$` 或 `$$...$$` 包裹。禁止反引号包裹公式。
+
+【分章节生成指令】
+- 摘要：首句概括问题类型，给出关键量化结果
+- 一、问题重述：精炼学术语言压缩背景
+- 二、模型假设：针对本题场景写5条具体假设
+- 三、符号说明：三列表格（符号、含义、单位）
+- 四、模型建立：每问独立成节，包含决策变量、目标函数、约束条件
+- 五、求解算法设计：编码方式、适应度函数、搜索策略
+- 六、结果分析：带具体数值的表格+图表（图表前后各有≥50字文字说明）
+- 七、敏感性分析：关键参数±20%波动分析
+- 八、模型评价与推广
+- 九、结论
+- 参考文献：≥15条，GB/T 7714格式，中英文混合，必须包含ALNS、绿色VRP、时变VRP文献
+- 附录：三个问题的完整Python代码（总计≥50页≈2000行），代码逐行完整，变量名后标注论文符号"""
+
+    async def generate():
+        try:
+            async for event in service.stream_paper_writing(task_id, system_prompt=S7_PROMPT):
+                if event["type"] == "chunk":
+                    yield f"data: {_json.dumps({'type': 'chunk', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                elif event["type"] == "start":
+                    yield f"event: start\ndata: {_json.dumps({'type': 'start', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                elif event["type"] == "done":
+                    yield f"event: done\ndata: {_json.dumps({'type': 'done', 'word_count': event.get('word_count', 0), 'sections_count': event.get('sections_count', 0), 'figure_refs': event.get('figure_refs', 0)}, ensure_ascii=False)}\n\n"
+                elif event["type"] == "error":
+                    yield f"event: error\ndata: {_json.dumps({'type': 'error', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                    return
+        except Exception as e:
+            yield f"event: error\ndata: {_json.dumps({'type': 'error', 'content': f'服务器错误: {str(e)}'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
