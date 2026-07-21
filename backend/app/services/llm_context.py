@@ -29,7 +29,7 @@ class LLMRequestConfig:
     model_name: str = ""
     provider: str = ""
     temperature: float = 0.7
-    max_tokens: int = 4096
+    max_tokens: int = 16384
     # 是否为"浏览器密钥模式"（密钥不落盘）
     browser_key_mode: bool = False
 

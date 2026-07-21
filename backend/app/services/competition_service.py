@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -856,20 +857,24 @@ def _extract_constraints(text: str) -> list[str]:
 # S7 论文系统提示词 — 批量生成与流式生成共享
 # ============================================================
 
-S7_SYSTEM_PROMPT = """你是一位全国大学生数学建模竞赛国奖论文写作专家。你精通的领域包括：
+S7_SYSTEM_PROMPT = """你是一位全国大学生数学建模竞赛国家一等奖论文写作专家。你精通的领域包括：
 - 数学建模各类型（预测、优化、评价、分类、聚类、仿真）
 - 学术论文写作规范
 - LaTeX公式排版
 - 数据可视化与结果呈现
 
-请撰写一篇能获得国家一等奖水平的完整学术论文。核心原则：
-1. 每个结论都有数据支撑
-2. 每个模型都有理论依据
-3. 每个图表都有具体分析和引用
+请撰写一篇能获得国家一等奖水平的完整学术论文，正文≥25000字。核心原则：
+1. 每个结论都有具体数据支撑，拒绝"效果较好"等模糊描述
+2. 每个模型都有完整的理论推导依据
+3. 每个图表都有≥100字的具体分析和引用
 4. 逻辑闭环：问题→模型→求解→验证→结论
 5. 学术语言精准，避免口语化和模板套话
 6. 图表引用要具体，不要模糊带过
-7. 创新点要明确，体现建模深度"""
+7. 创新点要明确，体现建模深度
+8. 所有数学公式用LaTeX $...$ 或 $$...$$ 包裹，禁止反引号
+9. 正文必须详细完整，每个章节都要充分展开，禁止简短敷衍
+10. 🚨 所有数据表格必须用Markdown管道符语法（|列1|列2|），必须有表头分隔行（|---|---|），绝对禁止用空格/Tab/制表符排列表格数据"""
+
 
 class CompetitionService:
     """竞赛工作流服务 — 管理 S0-S8 全流程"""
@@ -4288,94 +4293,103 @@ if __name__ == "__main__":
 
         context_text = "\n\n".join(context_parts)
 
-        # ===== LLM 驱动论文生成 =====
+        # ===== 🆕 分组并行分段 LLM 驱动论文生成 =====
         paper_md = ""
         llm_paper_success = False
+        generated_sections = {}
 
         if context_text:
             try:
-                messages = [{"role": "user", "content": f"""请根据以下数学建模全过程资料，撰写一篇能获得国奖水平的完整学术论文（Markdown格式）。
+                # 构建章节列表
+                fixed_sections = []
+                per_question_groups = {"model": [], "algorithm": [], "results": []}
 
-{context_text}
+                for sec in self.PAPER_SECTIONS:
+                    if sec.get("is_per_question"):
+                        for q in questions:
+                            s = dict(sec)
+                            s["id"] = f"{sec['id']}_{q.get('question_id', '')}"
+                            s["question"] = q
+                            # 分组：模型/算法/结果
+                            if "sec4" in s["id"]:
+                                per_question_groups["model"].append(s)
+                            elif "sec5" in s["id"]:
+                                per_question_groups["algorithm"].append(s)
+                            elif "sec6" in s["id"]:
+                                per_question_groups["results"].append(s)
+                    else:
+                        fixed_sections.append(dict(sec))
 
-## 论文结构要求（必须严格遵循）：
+                # token 预算：按章节需求分配，避免满打满算拖慢速度
+                TOKENS_HEAVY = 7168   # 模型建立（内容多但不需打满上限）
+                TOKENS_MEDIUM = 5120  # 算法、结果、EDA、假设
+                TOKENS_LIGHT = 3072   # 摘要、参考文献、结论
 
-### 标题
-有学术性，体现核心方法与问题主题
+                async def _gen_one(section, tokens=8192):
+                    """生成单个章节（用于 asyncio.gather 并行）"""
+                    q = section.get("question")
+                    prev = self._summarize_sections(generated_sections) if generated_sections else ""
+                    prompt = await self._build_section_prompt(section, context_text, prev, q)
+                    try:
+                        result = await call_llm_api(
+                            messages=[{"role": "user", "content": prompt}],
+                            system_prompt=S7_SYSTEM_PROMPT,
+                            db=self.db,
+                            user_id=self.user_id,
+                            function_name=f"competition_s7_section_{section['id']}",
+                            use_cache=False,
+                            max_tokens=tokens,
+                        )
+                        if result.get("success") and len(result.get("content", "").strip()) > 50:
+                            return (section, result["content"])
+                    except Exception:
+                        pass
+                    return (section, None)
 
-### 摘要（300-400字）
-结构：背景/问题 → 建模方法 → 关键结果（含具体数值） → 结论与创新点
-必须包含具体数据和指标
+                # === Phase 1: 固定章节（串行，每节依赖前文） ===
+                prefix_sections = [s for s in fixed_sections if s["id"] in ("title_abstract", "sec1_restatement", "sec2_assumptions", "sec3_eda")]
+                suffix_sections = [s for s in fixed_sections if s not in prefix_sections]
 
-### 关键词（4-6个）
+                for section in prefix_sections:
+                    tokens = TOKENS_LIGHT if "abstract" in section["id"] else TOKENS_MEDIUM if "eda" in section["id"] else TOKENS_MEDIUM
+                    _, content = await _gen_one(section, tokens)
+                    if content:
+                        generated_sections[section["id"]] = content
+                        paper_md += f"\n\n{section['heading']}\n\n{content}" if section["heading"] else f"\n\n{content}"
 
-### 一、问题重述
-用自己的学术语言重新表述，突出数学本质
+                # === Phase 2: 模型建立（3问并行） ===
+                if per_question_groups["model"]:
+                    results = await asyncio.gather(*[_gen_one(s, TOKENS_HEAVY) for s in per_question_groups["model"]])
+                    for section, content in results:
+                        if content:
+                            generated_sections[section["id"]] = content
+                            paper_md += f"\n\n{section['heading']}\n\n{content}"
 
-### 二、模型假设与符号说明
-- 列出合理假设（每条有依据）
-- 符号说明表（符号 | 含义 | 单位）
+                # === Phase 3: 求解算法（3问并行） ===
+                if per_question_groups["algorithm"]:
+                    results = await asyncio.gather(*[_gen_one(s, TOKENS_MEDIUM) for s in per_question_groups["algorithm"]])
+                    for section, content in results:
+                        if content:
+                            generated_sections[section["id"]] = content
+                            paper_md += f"\n\n{section['heading']}\n\n{content}"
 
-### 三、数据预处理与探索性分析
-- 数据来源与说明
-- 数据清洗过程（缺失值处理、异常值检测）
-- 🆕 引用数据统计结果和图表
-- 数据结构与特征分析
+                # === Phase 4: 结果分析（3问并行） ===
+                if per_question_groups["results"]:
+                    results = await asyncio.gather(*[_gen_one(s, TOKENS_MEDIUM) for s in per_question_groups["results"]])
+                    for section, content in results:
+                        if content:
+                            generated_sections[section["id"]] = content
+                            paper_md += f"\n\n{section['heading']}\n\n{content}"
 
-### 四、模型建立（每问独立成节）
-- 4.1 问题X：模型建立
-  - 建模思路与原理
-  - 变量定义与公式（LaTeX $...$ 或 $$...$$）
-  - 模型求解算法
+                # === Phase 5: 末尾固定章节（串行） ===
+                for section in suffix_sections:
+                    tokens = TOKENS_HEAVY if "sensitivity" in section["id"] else TOKENS_MEDIUM if "evaluation" in section["id"] or "conclusion" in section["id"] else TOKENS_LIGHT
+                    _, content = await _gen_one(section, tokens)
+                    if content:
+                        generated_sections[section["id"]] = content
+                        paper_md += f"\n\n{section['heading']}\n\n{content}" if section["heading"] else f"\n\n{content}"
 
-### 五、模型求解与结果分析（每问独立成节）
-- 5.1 问题X：结果分析
-  - 求解过程
-  - 结果展示（引用具体数值、图表、表格）
-  - 🆕 必须引用 figure_index 中提供的图表：`![图表标题](相对路径)`
-  - 结果解释与发现
-
-### 六、模型检验与敏感性分析
-- 稳定性检验（参数扰动 ±10%、±20%）
-- 模型对比（基线 vs 改进模型）
-- 误差分析
-
-### 七、模型评价与推广
-- 模型优点（3-5条）
-- 模型不足（3-5条，诚实但不过度贬低）
-- 推广方向
-
-### 八、结论
-- 分问题总结核心发现
-- 回扣原题要求
-- 最终结论
-
-### 参考文献
-至少5条真实存在的建模教材或论文，格式规范
-
-## 写作要求：
-- 🚨 核心要求：必须引用上下文提供的具体图表、数据和指标，不要写"如图X所示"而不给具体内容
-- 学术语言，逻辑严密，论证充分
-- 公式用LaTeX：行内$E=mc^2$，独立$$\\int_0^\\infty$$
-- 字数8000-15000字（中文计数）
-- 禁止使用占位符（"待填写"、"TODO"、"此处应有图"等）
-- 每个问题至少2-3页内容
-- 图表引用格式：`![描述性标题](figures/fig_xxx.png)`
-- 表格要完整，三线表风格
-
-请直接输出完整论文，从标题开始。"""}]
-
-                llm_result = await call_llm_api(
-                    messages=messages,
-                    system_prompt=S7_SYSTEM_PROMPT,
-                    db=self.db,
-                    user_id=self.user_id,
-                    function_name="competition_s7_paper_writing",
-                    use_cache=False
-                )
-
-                if llm_result.get("success") and len(llm_result.get("content", "")) > 2000:
-                    paper_md = llm_result["content"]
+                if len(paper_md.strip()) > 2000:
                     llm_paper_success = True
             except Exception:
                 pass
@@ -4413,7 +4427,7 @@ if __name__ == "__main__":
             "has_tables": bool(table_index.get("tables")) if isinstance(table_index, dict) else False,
             "figure_refs_in_paper": figure_refs_in_paper,
             "formula_count": formula_count,
-            "generation_method": "LLM" if llm_paper_success else "template",
+            "generation_method": "LLM+segmented" if llm_paper_success else "template",
         }
 
         (root / "paper_meta.json").write_text(
@@ -4888,7 +4902,7 @@ if __name__ == "__main__":
             system_prompt=system_prompt,
             db=self.db, user_id=self.user_id,
             function_name="competition_s7_paper_stream",
-            max_tokens=49152,
+            max_tokens=131072,
         ):
             if event["type"] == "token":
                 full_paper += event["content"]
@@ -4929,6 +4943,520 @@ if __name__ == "__main__":
 
         yield {"type": "done", "content": full_paper, "word_count": total_words,
                "sections_count": len(section_titles), "figure_refs": figure_refs_count}
+
+    # ============================================================
+    # 🆕 S7 分段论文生成（解决 DeepSeek 8192 token 输出上限）
+    # 将论文拆为 15+ 章节逐节生成，每节 ≤ 8192 tokens，
+    # 通过上下文传递保证连贯性，最终拼成 ≥2.5 万字完整论文
+    # ============================================================
+
+    # 论文分段定义：每段独立调用 LLM，通过 previous_sections 上下文串联
+    PAPER_SECTIONS = [
+        {
+            "id": "title_abstract",
+            "title": "标题与摘要",
+            "heading": "# ",
+            "target_chars": "800-1000字",
+            "instruction": """【任务：撰写论文标题、摘要、关键词】
+1. **标题**：体现核心算法（如ALNS）与问题主题，学术性
+2. **摘要**（500-600字）：结构 = 问题背景 → 建模方法 → 每个问题的关键数值结果 → 创新点
+3. **关键词**（5-8个）：含核心算法名、问题类型、关键技术
+
+要求：
+- 摘要必须包含每个问题的至少1个具体数值结果（如"总成本降低X%"）
+- 关键词涵盖方法论+应用场景
+- 直接输出，不要写"标题："等前缀""",
+        },
+        {
+            "id": "sec1_restatement",
+            "title": "一、问题重述",
+            "heading": "## 一、问题重述",
+            "target_chars": "2000-2500字",
+            "instruction": """【任务：撰写「一、问题重述」章节】
+1. 用自己的学术语言重新表述赛题背景，压缩冗余描述
+2. 深入分析问题的理论难度与工程价值
+3. 明确列出每个子问题的数学本质（优化/预测/评价/…）
+4. 简述本文的整体建模框架与各问题的关联
+
+要求：
+- 学术语言精准，拒绝口语化
+- 每个子问题用一句话概括数学本质
+- 2000-2500字""",
+        },
+        {
+            "id": "sec2_assumptions",
+            "title": "二、模型假设与符号说明",
+            "heading": "## 二、模型假设与符号说明",
+            "target_chars": "2500-3000字",
+            "instruction": """【任务：撰写「二、模型假设与符号说明」章节】
+1. **模型假设**（8-10条）：针对本题具体场景，每条说明：
+   - 假设内容
+   - 合理性依据（为什么可以做这个假设）
+2. **符号说明表**（≥25个符号）：四列表格
+   | 符号 | 含义 | 单位 | 取值/范围 |
+
+要求：
+- 假设必须贴合本题场景，禁止通用假设
+- 符号按类别分组（集合、参数、决策变量、中间变量）
+- 表格完整，符号统一使用运筹学标准记法""",
+        },
+        {
+            "id": "sec3_eda",
+            "title": "三、数据预处理与探索性分析",
+            "heading": "## 三、数据预处理与探索性分析",
+            "target_chars": "3000-4000字",
+            "instruction": """【任务：撰写「三、数据预处理与探索性分析」章节】
+1. 数据来源说明
+2. 数据清洗过程（缺失值处理、异常值检测、标准化）
+3. 描述性统计（表格形式，含均值/标准差/最值/分位数）
+4. 数据特征分析（分布、相关性、趋势）
+5. 引用可用图表进行分析，每张图前后≥100字说明
+
+要求：
+- 引用上下文中提供的具体统计数值
+- 引用可用图表：`![描述](figures/fig_xxx.png)`
+- 数据洞察为后续建模提供依据
+- 3000-4000字""",
+        },
+        {
+            "id": "sec4_model_q",
+            "title": "四、模型建立",
+            "heading": "## 四、模型建立",
+            "target_chars": "每问3500-4000字",
+            "is_per_question": True,
+            "instruction": """【任务：撰写「四、模型建立 —— {question_title}」】
+针对 "{question_title}"（任务类型：{task_type}，目标：{core_goal}），完成：
+
+1. **建模思路**：详细阐述选模型的原因、模型原理
+2. **决策变量定义**：写出每个变量的符号、维度、物理含义
+3. **目标函数**：展开为具体代数表达式，每项系数标注具体数值
+4. **约束条件**：逐条写出完整数学不等式/等式，禁止文字描述替代
+5. **模型复杂度分析**：变量数量、约束数量、求解复杂度
+6. **与基线模型对比**：本模型的优势
+
+要求：
+- 所有公式用 $$...$$ 或 $...$ 包裹
+- 每项系数必须具体（如 c_f=6.5 元/L）
+- 禁止用反引号包裹公式""",
+        },
+        {
+            "id": "sec5_algorithm_q",
+            "title": "五、求解算法设计",
+            "heading": "## 五、求解算法设计",
+            "target_chars": "每问2000-2500字",
+            "is_per_question": True,
+            "instruction": """【任务：撰写「五、求解算法设计 —— {question_title}」】
+1. 选择的精确算法/启发式算法名称与原理（如 ALNS、GA、TS）
+2. 编码方式（解的表示、染色体/个体结构）
+3. 适应度函数/评价函数定义
+4. 搜索策略（邻域结构、破坏/修复算子、交叉/变异操作）
+5. 算法参数设置表（参数 | 取值 | 说明）
+6. 收敛判据与终止条件
+7. 算法流程图（文字描述 + 伪代码）
+
+要求：
+- 算法名必须具体（如"改进自适应大邻域搜索算法"）
+- 伪代码格式清晰，用中文注解关键步骤
+- 参数取值要有依据""",
+        },
+        {
+            "id": "sec6_results_q",
+            "title": "六、结果分析",
+            "heading": "## 六、结果分析",
+            "target_chars": "每问2000-2500字",
+            "is_per_question": True,
+            "instruction": """【任务：撰写「六、结果分析 —— {question_title}」】
+
+1. 求解过程说明（收敛曲线、求解时间、迭代次数等）
+2. **结果展示表格**（三线表，参照模板）：
+
+【表格模板】
+**表X：{question_title}求解结果汇总**
+| 指标 | 基线模型 | 本文模型 | 改进幅度 |
+|:---|:---:|:---:|:---:|
+| 总成本 (元) | 145,832.7 | 128,736.4 | ↓11.7% |
+| 车辆数 | 24 | 20 | ↓16.7% |
+| 平均延迟 (h) | 1.82 | 0.64 | ↓64.8% |
+| 碳排放 (kg) | 14,203.5 | 11,857.3 | ↓16.5% |
+| 求解时间 (s) | 45.3 | 38.7 | ↓14.6% |
+
+**表后必须配≥150字文字分析**，说明每项指标变化的原因和业务含义。
+
+3. 引用相关图表（收敛曲线、路径对比图等），每张图表前后≥100字分析
+4. 结果解释与业务含义深度解读
+5. 与基线模型的多维度对比讨论
+6. 结果的启示与工程意义
+
+要求：
+- 对比表必须有具体数值，禁止"优于基线""效果更好"等模糊表述
+- 引用精确文件名：`![描述](figures/fig_xxx.png)`
+- 用上下文提供的具体结果数据填充表格""",
+        },
+        {
+            "id": "sec7_sensitivity",
+            "title": "七、敏感性分析",
+            "heading": "## 七、敏感性分析",
+            "target_chars": "3000-4000字",
+            "instruction": """【任务：撰写「七、敏感性分析」章节】
+
+1. 选取4-6个关键参数（如惩罚系数、燃油价格、时间窗宽度、碳排放单价、车辆容量等）
+2. 每个参数取3-5个水平进行波动分析（基准值 + 上下浮动）
+3. **每个参数必须配数据表格**，参照以下格式：
+
+【表格模板示例】
+**表X：时间窗惩罚系数敏感性分析结果**
+| 罚系数 (元/h) | 总成本 (元) | 车辆数 | 平均延迟 (h) | 晚到客户数 | 碳排放 (kg) |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 25 | 98,345.20 | 18 | 2.14 | 87 | 13,245.6 |
+| **50 (基准)** | **128,736.42** | **20** | **0.64** | **65** | **11,857.3** |
+| 75 | 147,211.70 | 22 | 0.31 | 42 | 10,985.4 |
+| 100 | 159,034.90 | 23 | 0.22 | 31 | 10,621.1 |
+
+**表后必须配文字分析**（参照模板）：
+"随着罚系数从25元/h提高到100元/h，总成本上升61.7%，但平均延迟从2.14h降至0.22h（降低89.7%），晚到客户数从87降至31（减少64.4%）。碳排放从13,245.6 kg降至10,621.1 kg（降低19.8%）。罚系数50元/h是性价比拐点——延迟已降至0.64h，继续提高到100仅再降0.42h，但成本多花约3万元。"
+
+4. 每个参数配图表（灵敏度曲线/柱状图/雷达图），引用精确文件名
+5. 给出各参数影响程度排名（从最敏感到最不敏感）
+6. 提供参数设置的工程建议
+
+要求：
+- 每个参数的分析必须包含：表格 → 图表 → 文字分析 三段式
+- 基准行加粗标注
+- 数据必须带具体数值，禁止"效果较好"等模糊描述
+- 给出关键量化发现（如"参数X每增加10%，总成本平均变化Y%"）
+- 3000-4000字""",
+        },
+        {
+            "id": "sec8_evaluation",
+            "title": "八、模型评价与推广",
+            "heading": "## 八、模型评价与推广",
+            "target_chars": "2000-2500字",
+            "instruction": """【任务：撰写「八、模型评价与推广」章节】
+1. **模型优点**（5-8条）：具体说明优势（如"ALNS在求解300+节点实例时，相比GA求解速度提升X%"）
+2. **模型不足**（5-8条）：诚实指出局限，并给出改进思路
+3. **推广方向**（≥3个）：具体应用场景（如"外卖配送路径优化""应急物资调度"）
+
+要求：
+- 优缺点的每一条都要具体化，拒绝模板化表述
+- 推广方向要有具体的行业/场景名称""",
+        },
+        {
+            "id": "sec9_conclusion",
+            "title": "九、结论",
+            "heading": "## 九、结论",
+            "target_chars": "1200-1500字",
+            "instruction": """【任务：撰写「九、结论」章节】
+1. 分问题总结核心发现（含具体数值结果）
+2. 逐条回扣原题要求，说明是否满足
+3. 本文的主要贡献
+4. 未来研究方向
+
+要求：
+- 数值具体，回扣原题
+- 结论有力，避免"还需进一步研究"等空洞表述""",
+        },
+        {
+            "id": "sec10_references",
+            "title": "参考文献",
+            "heading": "## 参考文献",
+            "target_chars": "15-20条",
+            "instruction": """【任务：撰写「参考文献」章节】
+请列出15-20条参考文献，要求：
+1. GB/T 7714格式
+2. 中英文混合（英文≥50%）
+3. 必须包含以下类型文献：
+   - 数学建模教材（如韩中庚、姜启源）
+   - ALNS/VNS/TS等启发式算法经典论文
+   - 绿色VRP相关文献
+   - 时变/动态VRP相关文献
+   - 多目标优化文献
+4. 每条格式规范，可真实检索""",
+        },
+    ]
+
+    async def _build_section_prompt(
+        self, section: dict, global_context: str,
+        previous_summary: str, question: dict = None
+    ) -> str:
+        """为单个论文章节构建完整的 LLM prompt"""
+        instruction = section["instruction"]
+
+        # 如果是"每问独立"型章节，替换问题信息
+        if section.get("is_per_question") and question:
+            instruction = instruction.replace("{question_title}", question.get("title", ""))
+            instruction = instruction.replace("{task_type}", question.get("task_type", ""))
+            instruction = instruction.replace("{core_goal}", question.get("core_goal", question.get("summary", "")))
+
+        parts = [instruction]
+
+        if global_context:
+            parts.append(f"\n\n## 📋 赛题与建模资料（供参考）\n\n{global_context}")
+
+        if previous_summary:
+            parts.append(f"\n\n## 📝 已生成的论文前文摘要（请保持风格、符号、编号一致）\n\n{previous_summary}")
+
+        parts.append(f"\n\n请直接输出「{section['title']}」的完整内容，不要重复章节标题之外的内容。目标字数：{section['target_chars']}。")
+
+        return "\n".join(parts)
+
+    def _summarize_sections(self, generated: dict, max_chars: int = 3000) -> str:
+        """将已生成章节压缩为摘要，用于传递给后续章节作为上下文"""
+        summaries = []
+        for sec_id, content in generated.items():
+            # 取每节前500字作为上下文摘要
+            summary = content[:500].replace("\n", " ").strip()
+            section_def = next((s for s in self.PAPER_SECTIONS if s["id"] == sec_id), None)
+            title = section_def["title"] if section_def else sec_id
+            summaries.append(f"【{title}】{summary}...")
+        combined = "\n".join(summaries)
+        if len(combined) > max_chars:
+            combined = combined[:max_chars] + "..."
+        return combined
+
+    async def stream_paper_writing_segmented(self, task_id: int, system_prompt: str = ""):
+        """
+        🆕 分段流式论文生成（解决模型输出 token 上限问题）
+
+        将论文拆分为 15+ 章节，每节独立调用 LLM（max_tokens=8192），
+        通过传递前文摘要保持论文连贯性。最终拼成 ≥2.5 万字完整论文。
+
+        Yields: {"type": "section_start"|"chunk"|"section_done"|"done"|"error", ...}
+        """
+        from app.models.models import CompetitionTask
+        from app.services.llm_service import call_llm_api_stream
+
+        result = await self.db.execute(
+            select(CompetitionTask).where(
+                CompetitionTask.id == task_id,
+                CompetitionTask.user_id == self.user_id,
+            )
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            yield {"type": "error", "content": f"任务不存在: {task_id}"}
+            return
+
+        if task.status not in ("s6_completed", "s7_completed", "s6_failed", "s7_check_passed"):
+            yield {"type": "error", "content": f"S7 需要 S6 已完成，当前状态: {task.status}"}
+            return
+
+        root = self._task_dir(task_id)
+        now_ts = datetime.now().isoformat(timespec="seconds")
+        questions = self._extract_questions(task)
+        problem_analysis = self._load_json_file(root / "step1" / "problem_analysis.json")
+        model_route = self._load_json_file(root / "plan" / "model_route.json")
+        data_plan = self._load_json_file(root / "plan" / "data_plan.json")
+        model_results = self._load_json_file(root / "results" / "model_results.json")
+        metrics_data = self._load_json_file(root / "results" / "metrics.json")
+        conclusions_data = self._load_json_file(root / "results" / "conclusions.json")
+        figure_index = self._load_json_file(root / "figure_index.json")
+
+        if not questions:
+            yield {"type": "error", "content": "未找到问题列表，请先完成 S1 赛题分析"}
+            return
+
+        paper_title = task.title or "数学建模论文"
+        if problem_analysis:
+            pa_title = problem_analysis.get("problem_title", "") or paper_title
+            if pa_title and pa_title != "未命名赛题":
+                paper_title = pa_title
+
+        # ==== 构建全局上下文（所有章节共享） ====
+        global_parts = []
+        available_fig_list = []
+
+        if problem_analysis:
+            excerpt = problem_analysis.get("problem_text_excerpt", "")
+            if excerpt and excerpt.strip():
+                global_parts.append(f"## 赛题原文\n\n{self._smart_truncate(excerpt, 4000)}")
+
+        q_info = [{"id": q.get("question_id", ""), "title": q.get("title", ""),
+                    "task_type": q.get("task_type", ""),
+                    "core_goal": q.get("core_goal", q.get("summary", "")),
+                    "constraints": q.get("constraints", [])[:5]} for q in questions]
+        global_parts.append(f"## 赛题分析\n\n{self._smart_truncate(json.dumps(q_info, ensure_ascii=False, indent=2), 4000)}")
+
+        if model_route:
+            route_summary = []
+            for mq in (model_route.get("questions", []) or []):
+                route_summary.append({
+                    "question_id": mq.get("question_id"),
+                    "baseline": mq.get("baseline_model", ""),
+                    "main_model": mq.get("main_model", ""),
+                    "model_reason": mq.get("model_reason", "")[:100],
+                    "validation": mq.get("validation", []),
+                })
+            global_parts.append(f"## 模型路线\n\n{self._smart_truncate(json.dumps(route_summary, ensure_ascii=False, indent=2), 3000)}")
+
+        if data_plan:
+            stats = data_plan.get("statistics", {})
+            if stats:
+                global_parts.append(f"## 数据统计\n\n{self._smart_truncate(json.dumps(stats, ensure_ascii=False, indent=2), 3000)}")
+
+        if model_results:
+            mr = model_results.get("questions", [])
+            if mr:
+                global_parts.append(f"## 建模结果\n\n{self._smart_truncate(json.dumps(mr, ensure_ascii=False, indent=2), 3000)}")
+        if metrics_data:
+            mi = metrics_data.get("items", [])
+            if mi:
+                global_parts.append(f"## 评价指标\n\n{self._smart_truncate(json.dumps(mi[:10], ensure_ascii=False, indent=2), 2000)}")
+
+        if figure_index:
+            figs = figure_index.get("figures", [])
+            existing_figs = [f for f in figs if f.get("exists")]
+            if existing_figs:
+                fig_refs = []
+                for f in existing_figs[:20]:
+                    fname = Path(f.get("path", "")).name
+                    available_fig_list.append(fname)
+                    fig_refs.append({"filename": fname, "title": f.get("title", ""),
+                                     "question_id": f.get("question_id", ""),
+                                     "type": f.get("chart_type", "")})
+                global_parts.append(
+                    f"## 可用图表（必须使用以下精确文件名引用）\n"
+                    f"{self._smart_truncate(json.dumps(fig_refs, ensure_ascii=False, indent=2), 3000)}\n"
+                    f"图片文件名清单: {', '.join(available_fig_list)}"
+                )
+
+        global_context = "\n\n".join(global_parts)
+
+        # ==== 构建章节列表（含每问独立章节） ====
+        all_sections = []
+        for sec in self.PAPER_SECTIONS:
+            if sec.get("is_per_question"):
+                for q in questions:
+                    s = dict(sec)
+                    s["id"] = f"{sec['id']}_{q.get('question_id', '')}"
+                    s["question"] = q
+                    all_sections.append(s)
+            else:
+                all_sections.append(dict(sec))
+
+        total_sections = len(all_sections)
+        yield {"type": "start", "content": f"论文分段生成已启动，共 {total_sections} 个章节..."}
+
+        # ==== 逐节生成 ====
+        generated_sections = {}  # sec_id → content
+        full_paper = ""
+        total_chars = 0
+        errors = []
+
+        for idx, section in enumerate(all_sections):
+            sec_id = section["id"]
+            sec_title = section["title"]
+            question = section.get("question")
+
+            # 构建前文摘要
+            previous_summary = self._summarize_sections(generated_sections) if generated_sections else ""
+
+            # 构建 prompt
+            user_prompt = await self._build_section_prompt(
+                section, global_context, previous_summary, question
+            )
+
+            # 发送章节开始事件
+            yield {
+                "type": "section_start",
+                "section_id": sec_id,
+                "section_title": sec_title,
+                "section_index": idx + 1,
+                "total_sections": total_sections,
+                "content": f"\n\n---\n### 📝 正在生成：{sec_title} ({idx+1}/{total_sections})\n\n",
+            }
+
+            # 调用 LLM 生成该节
+            section_text = ""
+            section_success = False
+            try:
+                async for event in call_llm_api_stream(
+                    messages=[{"role": "user", "content": user_prompt}],
+                    system_prompt=system_prompt,
+                    db=self.db,
+                    user_id=self.user_id,
+                    function_name=f"competition_s7_section_{sec_id}",
+                    max_tokens=8192,
+                ):
+                    if event["type"] == "token":
+                        section_text += event["content"]
+                        yield {"type": "chunk", "content": event["content"]}
+                    elif event["type"] == "error":
+                        errors.append({"section": sec_title, "error": event["content"]})
+                        yield {"type": "chunk", "content": f"\n\n> ⚠️ {sec_title} 生成失败: {event['content']}\n\n"}
+                        break
+                    elif event["type"] == "done":
+                        section_text = event.get("content", section_text)
+                        section_success = True
+            except Exception as e:
+                errors.append({"section": sec_title, "error": str(e)})
+                yield {"type": "chunk", "content": f"\n\n> ⚠️ {sec_title} 生成异常: {str(e)}\n\n"}
+
+            if section_success and len(section_text.strip()) > 50:
+                generated_sections[sec_id] = section_text
+                full_paper += f"\n\n{section['heading']}\n\n{section_text}" if section["heading"] else f"\n\n{section_text}"
+                total_chars += len(section_text.replace(" ", "").replace("\n", ""))
+                yield {
+                    "type": "section_done",
+                    "section_id": sec_id,
+                    "section_title": sec_title,
+                    "chars": len(section_text.replace(" ", "").replace("\n", "")),
+                }
+            else:
+                yield {
+                    "type": "section_done",
+                    "section_id": sec_id,
+                    "section_title": sec_title,
+                    "chars": 0,
+                    "error": "生成内容过短",
+                }
+
+        # ==== 组装与保存 ====
+        if len(full_paper.strip()) < 500:
+            yield {"type": "error", "content": f"分段论文生成失败：总内容仅 {len(full_paper)} 字符。错误: {errors}"}
+            return
+
+        # 写入文件
+        draft_path = root / "draft_paper.md"
+        draft_path.write_text(full_paper, encoding="utf-8")
+
+        section_titles = re.findall(r"^##\s+(.+)$", full_paper, re.MULTILINE)
+        figure_refs_count = len(re.findall(r"!\[.*?\]\(.*?\)", full_paper))
+
+        paper_meta = {
+            "schema_version": "2.0",
+            "generated_at": now_ts,
+            "title": paper_title,
+            "sections_count": len(section_titles),
+            "sections": section_titles,
+            "word_count": total_chars,
+            "path": f"paper_output/{task_id}/draft_paper.md",
+            "questions_count": len(questions),
+            "has_figures": bool(figure_index.get("figures")) if isinstance(figure_index, dict) else False,
+            "figure_refs_in_paper": figure_refs_count,
+            "generation_method": "LLM+segmented_streaming",
+            "segments_total": total_sections,
+            "segments_success": len(generated_sections),
+            "segments_errors": errors,
+        }
+        (root / "paper_meta.json").write_text(
+            json.dumps(paper_meta, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+        task.draft_paper = json.dumps(paper_meta, ensure_ascii=False)
+        task.current_step = "S7"
+        task.status = "s7_completed"
+        await self.db.commit()
+
+        yield {
+            "type": "done",
+            "content": full_paper,
+            "word_count": total_chars,
+            "sections_count": len(section_titles),
+            "figure_refs": figure_refs_count,
+            "segments_total": total_sections,
+            "segments_success": len(generated_sections),
+            "segments_errors": len(errors),
+        }
 
     # ============================================================
     # 🆕 代码附录 LLM 流式生成
@@ -5048,7 +5576,7 @@ if __name__ == "__main__":
                 db=self.db,
                 user_id=self.user_id,
                 function_name="competition_appendix_generation",
-                max_tokens=32768,
+                max_tokens=65536,
             ):
                 if event["type"] == "token":
                     full_text += event["content"]
@@ -5112,11 +5640,11 @@ if __name__ == "__main__":
 
         # 检查 1：字数
         total_checks += 1
-        if len(compact) < 3000:
-            check_items.append({"check": "字数", "status": "FAIL", "detail": f"有效字符 {len(compact)} < 3000（最低要求）"})
+        if len(compact) < 8000:
+            check_items.append({"check": "字数", "status": "FAIL", "detail": f"有效字符 {len(compact)} < 8000（最低要求）"})
             failed += 1
-        elif len(compact) < 8000:
-            check_items.append({"check": "字数", "status": "WARN", "detail": f"有效字符 {len(compact)}，建议 ≥ 8000"})
+        elif len(compact) < 15000:
+            check_items.append({"check": "字数", "status": "WARN", "detail": f"有效字符 {len(compact)}，建议 ≥ 15000"})
             passed += 1
         else:
             check_items.append({"check": "字数", "status": "PASS", "detail": f"有效字符 {len(compact)}"})

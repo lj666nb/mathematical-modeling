@@ -166,11 +166,10 @@ async def _log_llm_call(
     success: bool,
     error_message: str = ""
 ):
-    """记录LLM调用日志到数据库"""
-    if db is None:
-        return
+    """记录LLM调用日志到数据库（使用独立session，不污染调用方事务）"""
     try:
         from app.models.models import LLMCallLog
+        from app.database import async_session_factory
         log = LLMCallLog(
             user_id=user_id,
             model=model,
@@ -182,8 +181,10 @@ async def _log_llm_call(
             success=success,
             error_message=error_message[:500] if error_message else ""
         )
-        db.add(log)
-        await db.flush()
+        # 使用独立 session 写入，避免污染外层事务
+        async with async_session_factory() as log_db:
+            log_db.add(log)
+            await log_db.commit()
     except Exception:
         pass  # 审计日志不应影响主流程
 
@@ -198,7 +199,7 @@ class SimpleLLMConfig:
                  model_name: str = "",
                  provider: str = "openai",
                  temperature: float = 0.7,
-                 max_tokens: int = 4096):
+                 max_tokens: int = 16384):
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
@@ -341,7 +342,7 @@ async def call_llm_api(
         "model": model_name,
         "messages": msgs,
         "temperature": config.temperature or 0.7,
-        "max_tokens": max_tokens or config.max_tokens or 4096,
+        "max_tokens": max_tokens or config.max_tokens or 16384,
     }
 
     # 生成缓存键
@@ -478,7 +479,7 @@ async def call_llm_api_stream(
         "model": model_name,
         "messages": msgs,
         "temperature": config.temperature or 0.7,
-        "max_tokens": max_tokens or config.max_tokens or 4096,
+        "max_tokens": max_tokens or config.max_tokens or 16384,
         "stream": True,
     }
 

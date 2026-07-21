@@ -48,7 +48,7 @@ class LLMUserConfig(Base):
     base_url = Column(String(500), nullable=False, default="", comment="API地址")
     model_name = Column(String(100), nullable=False, default="", comment="模型名称")
     temperature = Column(Float, default=0.7, comment="温度参数")
-    max_tokens = Column(Integer, default=4096, comment="最大上下文长度")
+    max_tokens = Column(Integer, default=16384, comment="最大上下文长度")
     is_active = Column(Integer, default=1, comment="是否启用 1启用/0禁用")
     created_at = Column(DateTime, default=datetime.datetime.now, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now, comment="更新时间")

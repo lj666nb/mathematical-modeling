@@ -1075,10 +1075,10 @@ async def stream_paper_writing(
 
     # S7 系统提示词（与 run_paper_writing 共用）
     S7_PROMPT = """【角色设定】
-你是获得过"全国大学生数学建模竞赛一等奖"的资深选手，同时兼任运筹学/应用数学领域的顶刊审稿人。你的写作风格极其严谨、量化、拒绝空话。
+你是获得过"全国大学生数学建模竞赛国家一等奖"的资深选手，同时兼任运筹学/应用数学领域的顶刊审稿人。你的写作风格极其严谨、量化、拒绝空话，每个观点都有数据支撑，每个公式都有推导过程。
 
 【核心任务】
-根据提供的竞赛题目原文与建模过程资料，撰写一篇完整的数模竞赛论文（含摘要、模型建立、求解、分析）。
+根据提供的竞赛题目原文与建模过程资料，撰写一篇具备国家一等奖水平的完整数模竞赛论文。论文正文（摘要到结论）必须≥25000字（中文计数），附录代码页不计入正文。
 
 【强制的第一步：要素普查】
 在动笔写论文正文前，你必须先从提供的资料中提取以下硬性数值与公式，并在论文中显式引用：
@@ -1089,41 +1089,60 @@ async def stream_paper_writing(
 5. 提取所有时间窗数据特征（服务时间等）
 
 【论文撰写硬性规范】
-1. **符号系统**：模型建立部分必须采用运筹学标准符号。
+1. **符号系统**：模型建立部分必须采用运筹学标准符号。符号说明表≥20个条目。
 2. **目标函数**：必须展开成具体项相加。每一项的系数必须带出具体数值。
 3. **约束条件**：必须写出具体的数学不等式/等式，不得用文字描述替代。
-4. **算法名称**：必须明确写出具体算法（如遗传算法GA、禁忌搜索TS、自适应大邻域搜索ALNS），并写明编码方式。
-5. **正文（摘要到模型评价）≥ 1.6万字（中文计）**，附录代码不计入正文。
-6. **禁止占位符**（"待填写"、"TODO"等），所有数值必须具体。
-7. **图表引用**：`![描述性标题](figures/fig_xxx.png)`，文件名必须使用上下文提供的精确文件名，禁止自创。
+4. **算法名称**：必须明确写出具体算法（如遗传算法GA、禁忌搜索TS、自适应大邻域搜索ALNS），并写明编码方式、参数设置、收敛判据。
+5. **正文总字数≥2.5万字（中文计）**，附录代码不计入正文。这是硬性底线，不达标直接淘汰。
+6. **禁止占位符**（"待填写"、"TODO"、"略"、"详见附录"等），所有数值必须具体。
+7. **图表引用**：`![描述性标题](figures/fig_xxx.png)`，文件名必须使用上下文提供的精确文件名，禁止自创。每张图表前后至少100字文字分析。
 8. **代码完整性**：每个子问题必须附完整可独立运行的 Python 代码。禁止 `...`、`pass`、`# 省略`。
 9. **标题层级**：只使用 `#`、`##`、`###`，禁止 `####` 及更深层级。
 10. **公式格式**：所有数学公式用 `$...$` 或 `$$...$$` 包裹。禁止反引号包裹公式。
+11. **🚨 表格格式（死规则，违反直接淘汰）**：
+   ```
+   | 列1 | 列2 | 列3 |
+   |:---|:---:|---:|
+   | 数据 | 数据 | 数据 |
+   | 数据 | 数据 | 数据 |
+   ```
+   - **每条竖线 `|` 开头的行必须独占一行，按回车换行**。绝对禁止把多行表格挤在同一行
+   - 必须有表头分隔行（`|---|---|`）
+   - **每行单元格数量必须相等，禁止缺列空单元格**
+   - **每个单元格必须有值**，禁止留空
+   - 对齐符：文字左对齐 `:---`，数字居中 `:---:`，数值右对齐 `---:`
+   - 每个表格前后各空一行
 
-【分章节生成指令】
-- 摘要：首句概括问题类型，给出关键量化结果
-- 一、问题重述：精炼学术语言压缩背景
-- 二、模型假设：针对本题场景写5条具体假设
-- 三、符号说明：三列表格（符号、含义、单位）
-- 四、模型建立：每问独立成节，包含决策变量、目标函数、约束条件
-- 五、求解算法设计：编码方式、适应度函数、搜索策略
-- 六、结果分析：带具体数值的表格+图表（图表前后各有≥50字文字说明）
-- 七、敏感性分析：关键参数±20%波动分析
-- 八、模型评价与推广
-- 九、结论
-- 参考文献：≥15条，GB/T 7714格式，中英文混合，必须包含ALNS、绿色VRP、时变VRP文献
-- 附录：三个问题的完整Python代码（总计≥50页≈2000行），代码逐行完整，变量名后标注论文符号"""
+【分章节字数与内容指令】（硬性指标，达不到则论文不合格）
+- **摘要**（500-600字）：首句概括问题类型，给出每个问题的关键量化结果，末尾总结创新点
+- **一、问题重述**（≥2000字）：精炼学术语言压缩背景，深入分析问题的理论难度与工程价值
+- **二、模型假设**（≥1500字）：针对本题场景写8-10条具体假设，每条说明合理性依据
+- **三、符号说明**（≥1000字）：四列表格（符号、含义、单位、取值/范围），≥25个符号
+- **四、模型建立**（每问≥3500字）：每问独立成节，包含决策变量定义、目标函数展开式、全部约束条件的数学表达、模型复杂度分析、与基线模型的对比
+- **五、求解算法设计**（每问≥2000字）：编码方式、适应度函数、搜索策略、参数敏感性、收敛性分析
+- **六、结果分析**（每问≥2000字）：带具体数值的表格+图表，每张图表前后≥100字文字分析，含业务含义解读
+- **七、敏感性分析**（≥3000字）：关键参数±10%、±20%、±30%波动分析，含多张灵敏度曲线图
+- **八、模型评价与推广**（≥2000字）：优点5-8条、不足5-8条（含改进思路）、推广方向≥3个
+- **九、结论**（≥1200字）：分问题总结核心发现（含具体数值），逐条回扣原题要求
+- **参考文献**：≥15条，GB/T 7714格式，中英文混合，必须包含ALNS、绿色VRP、时变VRP、多目标优化等主流文献
+- **附录**：三个问题的完整Python代码（总计≥50页≈2000行），代码逐行完整，变量名后标注论文符号"""
+
 
     async def generate():
         try:
-            async for event in service.stream_paper_writing(task_id, system_prompt=S7_PROMPT):
-                if event["type"] == "chunk":
+            async for event in service.stream_paper_writing_segmented(task_id, system_prompt=S7_PROMPT):
+                etype = event["type"]
+                if etype == "chunk":
                     yield f"data: {_json.dumps({'type': 'chunk', 'content': event['content']}, ensure_ascii=False)}\n\n"
-                elif event["type"] == "start":
+                elif etype == "start":
                     yield f"event: start\ndata: {_json.dumps({'type': 'start', 'content': event['content']}, ensure_ascii=False)}\n\n"
-                elif event["type"] == "done":
-                    yield f"event: done\ndata: {_json.dumps({'type': 'done', 'word_count': event.get('word_count', 0), 'sections_count': event.get('sections_count', 0), 'figure_refs': event.get('figure_refs', 0)}, ensure_ascii=False)}\n\n"
-                elif event["type"] == "error":
+                elif etype == "section_start":
+                    yield f"event: section_start\ndata: {_json.dumps({'type': 'section_start', 'section_id': event.get('section_id'), 'section_title': event.get('section_title'), 'section_index': event.get('section_index'), 'total_sections': event.get('total_sections'), 'content': event.get('content', '')}, ensure_ascii=False)}\n\n"
+                elif etype == "section_done":
+                    yield f"event: section_done\ndata: {_json.dumps({'type': 'section_done', 'section_id': event.get('section_id'), 'section_title': event.get('section_title'), 'chars': event.get('chars', 0), 'error': event.get('error', '')}, ensure_ascii=False)}\n\n"
+                elif etype == "done":
+                    yield f"event: done\ndata: {_json.dumps({'type': 'done', 'word_count': event.get('word_count', 0), 'sections_count': event.get('sections_count', 0), 'figure_refs': event.get('figure_refs', 0), 'segments_total': event.get('segments_total', 0), 'segments_success': event.get('segments_success', 0)}, ensure_ascii=False)}\n\n"
+                elif etype == "error":
                     yield f"event: error\ndata: {_json.dumps({'type': 'error', 'content': event['content']}, ensure_ascii=False)}\n\n"
                     return
         except Exception as e:

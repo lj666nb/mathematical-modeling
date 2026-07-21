@@ -71,7 +71,7 @@ class LLMConfigCreate(BaseModel):
     base_url: str = Field(default="", description="API地址")
     model_name: str = Field(default="", description="模型名称")
     temperature: float = Field(default=0.7, ge=0, le=2, description="温度参数")
-    max_tokens: int = Field(default=4096, ge=1, le=128000, description="最大上下文长度")
+    max_tokens: int = Field(default=16384, ge=1, le=128000, description="最大上下文长度")
 
 
 class LLMConfigUpdate(BaseModel):

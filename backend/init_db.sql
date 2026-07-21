@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS llm_user_config (
     base_url VARCHAR(500) NOT NULL DEFAULT '',    -- API地址
     model_name VARCHAR(100) NOT NULL DEFAULT '',  -- 模型名称
     temperature REAL DEFAULT 0.7,                -- 温度参数
-    max_tokens INTEGER DEFAULT 4096,             -- 最大上下文长度
+    max_tokens INTEGER DEFAULT 16384,            -- 最大上下文长度（论文生成需≥131072）
     is_active INTEGER DEFAULT 1,                 -- 是否启用
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

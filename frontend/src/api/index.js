@@ -245,7 +245,7 @@ export const competitionApi = {
   getEvidenceGate(taskId) { return request.get(`/competition/tasks/${taskId}/evidence-gate`) },
 
   // S7 论文生成
-  runPaperWriting(taskId) { return request.post(`/competition/tasks/${taskId}/paper-writing`) },
+  runPaperWriting(taskId) { return request.post(`/competition/tasks/${taskId}/paper-writing`, null, { timeout: 900000 }) },
   getPaper(taskId) { return request.get(`/competition/tasks/${taskId}/paper-writing`) },
 
   // S7 格式检查
