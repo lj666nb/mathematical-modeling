@@ -253,6 +253,18 @@ export const competitionApi = {
   getFormatCheck(taskId) { return request.get(`/competition/tasks/${taskId}/format-check`) },
   fixPaper(taskId) { return request.post(`/competition/tasks/${taskId}/fix-paper`) },
 
+  // 🆕 代码附录
+  getAppendixCode(taskId) { return request.get(`/competition/tasks/${taskId}/appendix-code`) },
+  mergeAppendix(taskId) { return request.post(`/competition/tasks/${taskId}/merge-appendix`) },
+  async streamGenerateAppendix(taskId, signal) {
+    const token = localStorage.getItem('token')
+    return fetch(`/api/competition/tasks/${taskId}/generate-appendix?token=${encodeURIComponent(token || '')}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+    })
+  },
+
   // 🆕 流式论文生成（SSE）
   async streamPaperWriting(taskId, signal) {
     const token = localStorage.getItem('token')

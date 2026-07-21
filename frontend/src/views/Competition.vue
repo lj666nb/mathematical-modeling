@@ -703,6 +703,35 @@
                   <p style="font-size:var(--text-sm);">通过 S6 门禁后在此生成论文</p>
                 </div>
               </div>
+
+              <!-- 📎 代码附录 独立模块 -->
+              <div class="app-card step-card appendix-code-card">
+                <div class="app-card-header">
+                  <span class="app-card-title">📎 代码附录</span>
+                  <el-tag v-if="appendixMerged" type="success" size="small" effect="dark" round>已合并</el-tag>
+                  <el-tag v-else-if="appendixPreview" type="info" size="small" effect="dark" round>已加载</el-tag>
+                </div>
+                <div class="app-card-body">
+                  <p class="card-desc">生成完整6模块Python代码附录（50+页），预览后合并到论文参考文献之后，实现论文与代码一体化导出。</p>
+                  <div class="btn-row">
+                    <el-button type="primary" :loading="appendixGenerating" @click="generateAppendix" round>
+                      📎 {{ appendixGenerating ? '生成中...' : '生成代码附录' }}
+                    </el-button>
+                    <el-button type="success" :disabled="!appendixPreview" :loading="mergeAppendixLoading" @click="mergeAppendix" round>
+                      📥 {{ mergeAppendixLoading ? '合并中...' : '合并到论文' }}
+                    </el-button>
+                  </div>
+
+                  <!-- 代码附录预览 -->
+                  <div v-if="appendixPreview" class="analysis-result mt-3">
+                    <div class="paper-toolbar">
+                      <span class="paper-toolbar-title">📄 代码附录预览</span>
+                      <span class="text-muted">{{ appendixPreviewLines }} 行 | 6大模块 | 可1:1复现论文结果</span>
+                    </div>
+                    <div class="paper-render markdown-body" v-html="renderedAppendix"></div>
+                  </div>
+                </div>
+              </div>
           </div>
         </template>
       </div>
@@ -766,7 +795,12 @@ const paperWritingLoading = ref(false)
 const paperData = ref(null)
 const formatCheckLoading = ref(false)
 const formatCheckData = ref(null)
-const fixPaperLoading = ref(false)  // 🆕 论文修复
+const fixPaperLoading = ref(false)
+const mergeAppendixLoading = ref(false)
+const appendixPreview = ref(null)       // 🆕 代码附录预览内容
+const appendixGenerating = ref(false)   // 🆕 流式生成中
+const appendixMerged = ref(false)       // 🆕 是否已合并
+const appendixAbortController = ref(null)  // 🆕 取消生成
 
 // 🆕 流式双栏生成
 const paperStreaming = ref(false)
@@ -811,6 +845,19 @@ const completedSteps = computed(() => {
 })
 
 // 🆕 论文渲染（Markdown + LaTeX + 图片）
+// 🆕 代码附录预览
+const appendixPreviewLines = computed(() => {
+  if (!appendixPreview.value) return 0
+  return (appendixPreview.value.match(/\n/g) || []).length + 1
+})
+
+const renderedAppendix = computed(() => {
+  if (!appendixPreview.value) return '<p style="color:var(--text-tertiary);">(暂无内容)</p>'
+  // 渲染 markdown
+  let html = marked.parse(appendixPreview.value, { breaks: false, gfm: true })
+  return html
+})
+
 const renderedPaper = computed(() => {
   const raw = paperData.value?.draft_paper
   if (!raw) return '<p style="color:var(--text-tertiary);">(暂无内容)</p>'
@@ -1473,6 +1520,69 @@ async function fixPaper() {
     ElMessage.error('论文修复失败: ' + (e.response?.data?.detail || e.message))
   }
   finally { fixPaperLoading.value = false }
+}
+
+// ===== 代码附录 =====
+
+async function generateAppendix() {
+  if (!activeTaskId.value) return
+  appendixGenerating.value = true
+  appendixPreview.value = ''
+  const ctrl = new AbortController()
+  appendixAbortController.value = ctrl
+
+  try {
+    const response = await competitionApi.streamGenerateAppendix(activeTaskId.value, ctrl.signal)
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.type === 'chunk') {
+            appendixPreview.value += data.content
+          } else if (data.type === 'done') {
+            const lines = (appendixPreview.value.match(/\n/g) || []).length + 1
+            ElMessage.success(`代码附录已生成（${lines} 行，6大模块）`)
+          } else if (data.type === 'error') {
+            ElMessage.error(data.content || '生成失败')
+          }
+        } catch (e) { /* skip parse errors */ }
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      ElMessage.error('生成失败: ' + e.message)
+    }
+  } finally {
+    appendixGenerating.value = false
+    appendixAbortController.value = null
+  }
+}
+
+async function mergeAppendix() {
+  if (!activeTaskId.value) return
+  mergeAppendixLoading.value = true
+  try {
+    const res = await competitionApi.mergeAppendix(activeTaskId.value)
+    ElMessage.success(res.message || '代码附录已合并到论文末尾')
+    appendixMerged.value = true
+    await loadPaperFromDB()
+  } catch (e) {
+    ElMessage.error('合并失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    mergeAppendixLoading.value = false
+  }
 }
 
 // ===== 论文下载 =====

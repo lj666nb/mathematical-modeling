@@ -733,6 +733,194 @@ async def fix_paper(
         raise HTTPException(status_code=500, detail=f"论文修复失败：{str(e)}")
 
 
+# ==================== 代码附录 ====================
+
+APPENDIX_PROMPT = """【角色设定】
+你是资深数学建模竞赛选手兼Python算法工程师，擅长将数学模型转化为高质量、可运行的Python代码。
+
+【核心任务】
+根据提供的赛题上下文（题目、模型、数据、结果），生成一份完整的代码附录。
+
+【代码规范】
+1. 所有变量命名后必须注释对应的论文数学符号
+2. 每个函数必须有详细的docstring（功能、参数、返回值、对应论文章节）
+3. 算法必须完整实现，不能使用 `...` `pass` `# 省略` 等占位符
+4. 总代码量≥50页（≥2500行），通过详注和函数拆分达到
+5. 输出格式为Markdown，代码块用 ```python 包裹
+6. 全部参数严格对齐论文中的数值"""
+
+
+@router.post("/tasks/{task_id}/generate-appendix")
+async def generate_code_appendix(
+    task_id: int,
+    token: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    SSE流式生成代码附录。
+    收集S0-S6上下文，调用LLM生成6模块Python代码，实时推送到前端。
+    生成完成后保存到 paper_output/{task_id}/appendix_code.md
+    """
+    from pathlib import Path as FilePath
+    from app.routers.auth import decode_access_token
+    from app.models.models import User
+    from sqlalchemy import select as sa_select
+    import json as _json
+
+    if not token:
+        raise HTTPException(status_code=401, detail="需要认证令牌(?token=)")
+
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="无效的令牌载荷")
+
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    service = CompetitionService(db, user_id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    async def generate():
+        try:
+            async for event in service.generate_code_appendix_stream(
+                task_id, system_prompt=APPENDIX_PROMPT
+            ):
+                if event["type"] == "chunk":
+                    yield f"data: {_json.dumps({'type': 'chunk', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                elif event["type"] == "start":
+                    yield f"event: start\ndata: {_json.dumps({'type': 'start', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                elif event["type"] == "done":
+                    yield f"event: done\ndata: {_json.dumps({'type': 'done', 'word_count': event.get('word_count', 0), 'lines': event.get('lines', 0)}, ensure_ascii=False)}\n\n"
+                elif event["type"] == "error":
+                    yield f"event: error\ndata: {_json.dumps({'type': 'error', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                    return
+        except Exception as e:
+            yield f"event: error\ndata: {_json.dumps({'type': 'error', 'content': f'服务器错误: {str(e)}'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.get("/tasks/{task_id}/appendix-code")
+async def get_appendix_code(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    返回完整代码附录内容（用于前端预览）。
+
+    读取后端内置的 appendix_code.md，返回原始 markdown 内容。
+    """
+    from pathlib import Path as FilePath
+
+    appendix_path = FilePath(__file__).resolve().parent.parent / "data" / "appendix_code.md"
+    if not appendix_path.exists():
+        raise HTTPException(status_code=500, detail="代码附录模板文件不存在")
+
+    content = appendix_path.read_text(encoding="utf-8")
+
+    return {
+        "task_id": task_id,
+        "content": content,
+        "length": len(content),
+        "lines": content.count('\n') + 1,
+    }
+
+
+@router.post("/tasks/{task_id}/merge-appendix")
+async def merge_code_appendix(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    将完整6模块代码附录合并到论文 draft_paper.md 末尾。
+
+    逻辑：
+    1. 读取当前论文 draft_paper.md
+    2. 读取后端内置的代码附录模板（app/data/appendix_code.md）
+    3. 若已有旧附录，先移除
+    4. 在参考文献之后插入新附录
+    5. 写回 draft_paper.md
+    """
+    from pathlib import Path as FilePath
+    import re
+
+    service = CompetitionService(db, current_user.id)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    root = FilePath("paper_output") / str(task_id)
+    md_path = root / "draft_paper.md"
+    if not md_path.exists():
+        raise HTTPException(status_code=400, detail="论文草稿不存在，请先运行 S7 论文生成")
+
+    # 1. 读取当前论文
+    paper_content = md_path.read_text(encoding="utf-8")
+
+    # 2. 读取内置附录模板
+    appendix_path = FilePath(__file__).resolve().parent.parent / "data" / "appendix_code.md"
+    if not appendix_path.exists():
+        raise HTTPException(status_code=500, detail="代码附录模板文件不存在")
+    appendix_content = appendix_path.read_text(encoding="utf-8")
+
+    # 3. 移除已有附录（如果存在）
+    # 匹配从 "## 附录" 或 "# 附录" 开始到文件末尾的内容
+    old_appendix_pattern = r'\n---\n\n## 附录：完整建模代码.*$'
+    paper_content = re.sub(old_appendix_pattern, '', paper_content, flags=re.DOTALL)
+
+    old_appendix_pattern2 = r'\n---\n\n# 附录 完整建模源代码.*$'
+    paper_content = re.sub(old_appendix_pattern2, '', paper_content, flags=re.DOTALL)
+
+    # 也清理旧的附录A-E标记
+    old_appendix_pattern3 = r'\n### 附录[ABCDE].*$'
+    paper_content = re.sub(old_appendix_pattern3, '', paper_content, flags=re.DOTALL)
+
+    # 4. 在参考文献之后插入附录
+    ref_match = re.search(r'## 参考文献\s*\n', paper_content)
+    if ref_match:
+        # 找到参考文献section的结束位置（下一个 --- 或文件末尾）
+        ref_end = ref_match.end()
+        # 找到参考文献后的第一个 ---
+        next_sep = paper_content.find('\n---', ref_end)
+        if next_sep > 0:
+            insert_pos = next_sep
+        else:
+            insert_pos = len(paper_content)
+    else:
+        # 没有参考文献，直接在末尾追加
+        insert_pos = len(paper_content)
+
+    # 确保有换行分隔
+    merged = paper_content[:insert_pos].rstrip() + '\n\n---\n\n' + appendix_content
+
+    # 5. 写回
+    md_path.write_text(merged, encoding="utf-8")
+
+    return {
+        "success": True,
+        "task_id": task_id,
+        "original_length": len(paper_content),
+        "new_length": len(merged),
+        "appendix_added_chars": len(appendix_content),
+        "message": f"代码附录已合并到论文末尾（新增 {len(appendix_content):,} 字符）",
+    }
+
+
 # ==================== 论文下载 ====================
 
 @router.get("/tasks/{task_id}/paper/download")

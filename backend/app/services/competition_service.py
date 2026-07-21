@@ -4931,6 +4931,148 @@ if __name__ == "__main__":
                "sections_count": len(section_titles), "figure_refs": figure_refs_count}
 
     # ============================================================
+    # 🆕 代码附录 LLM 流式生成
+    # ============================================================
+
+    async def generate_code_appendix_stream(self, task_id: int, system_prompt: str = ""):
+        """
+        LLM流式生成完整代码附录（6模块Python代码）。
+
+        复用 run_paper_writing 的上下文收集逻辑（从S0-S6 JSON文件读取），
+        但使用专门的代码生成prompt，要求LLM生成可1:1复现论文结果的完整代码。
+
+        Yields:
+            {"type": "start", "content": "..."}
+            {"type": "chunk", "content": "..."}
+            {"type": "done", "word_count": N, "lines": N}
+            {"type": "error", "content": "..."}
+        """
+        import json as _json
+        from app.services.llm_service import call_llm_api_stream
+
+        root = self._task_dir(task_id)
+        task = await self.get_task(task_id)
+        if not task:
+            yield {"type": "error", "content": "任务不存在"}
+            return
+
+        # --- 收集上下文 (同 run_paper_writing) ---
+        questions = self._extract_questions(task)
+        problem_analysis = self._load_json_file(root / "step1" / "problem_analysis.json")
+        model_route = self._load_json_file(root / "plan" / "model_route.json")
+        data_plan = self._load_json_file(root / "plan" / "data_plan.json")
+        model_results = self._load_json_file(root / "results" / "model_results.json")
+        metrics_data = self._load_json_file(root / "results" / "metrics.json")
+
+        context_parts = []
+
+        # 1. 赛题原文
+        if problem_analysis:
+            excerpt = problem_analysis.get("problem_text_excerpt", "")
+            if excerpt and excerpt.strip():
+                context_parts.append(f"## 赛题原文\n\n{self._smart_truncate(excerpt, 3000)}")
+
+        # 2. 问题列表
+        q_info = []
+        for q in questions:
+            q_info.append({
+                "id": q.get("question_id", ""),
+                "title": q.get("title", ""),
+                "task_type": q.get("task_type", ""),
+                "core_goal": q.get("core_goal", q.get("summary", "")),
+                "constraints": q.get("constraints", [])[:5],
+            })
+        context_parts.append(f"## 赛题分析\n\n{self._smart_truncate(_json.dumps(q_info, ensure_ascii=False, indent=2), 3000)}")
+
+        # 3. 模型路线
+        if model_route:
+            mr_qs = model_route.get("questions", [])
+            route_summary = []
+            for mq in mr_qs:
+                route_summary.append({
+                    "question_id": mq.get("question_id"),
+                    "baseline": mq.get("baseline_model", ""),
+                    "main_model": mq.get("main_model", ""),
+                    "model_reason": mq.get("model_reason", "")[:100],
+                })
+            context_parts.append(f"## 模型路线\n\n{self._smart_truncate(_json.dumps(route_summary, ensure_ascii=False, indent=2), 2000)}")
+
+        # 4. 数据统计
+        if data_plan:
+            stats = data_plan.get("statistics", {})
+            if stats:
+                context_parts.append(f"## 数据统计\n\n{self._smart_truncate(_json.dumps(stats, ensure_ascii=False, indent=2), 2000)}")
+
+        # 5. 建模结果
+        if model_results:
+            mr = model_results.get("questions", [])
+            if mr:
+                context_parts.append(f"## 建模结果\n\n{self._smart_truncate(_json.dumps(mr, ensure_ascii=False, indent=2), 2000)}")
+        if metrics_data:
+            context_parts.append(f"## 指标数据\n\n{self._smart_truncate(_json.dumps(metrics_data, ensure_ascii=False, indent=2), 1500)}")
+
+        context_text = "\n\n".join(context_parts)
+
+        # --- 构建代码生成 prompt ---
+        user_prompt = f"""请根据以下数学建模竞赛的全过程资料，生成一份完整的、可独立运行的Python代码附录。
+
+{context_text}
+
+【代码附录要求】
+1. 严格分为6大模块，每模块包含完整可运行代码
+2. 模块1：运行环境配置、全局参数定义（所有论文参数对齐）
+3. 模块2：数据完整预处理（读取原始数据、清洗、聚合、导出）
+4. 模块3：问题一 ALNS完整求解代码（含CWS基线、破坏/修复算子、SA迭代、能耗计算）
+5. 模块4：问题二 绿色限行两阶段优化代码（绿色区判定、EV优先分配、禁令约束）
+6. 模块5：问题三 动态滚动时域调度代码（四类事件仿真、最小插入成本、实时响应）
+7. 模块6：结果可视化与敏感性分析代码（全部图表+表格导出）
+
+【强制要求】
+- 总代码量必须达到50页以上（约2500+行Python代码）
+- 所有算法流程拆分细粒度函数，禁止简短凑数
+- 每段代码配备超长详细中文注释，解释函数功能、参数含义、算法逻辑
+- 所有变量、公式、参数完全对齐论文数学模型
+- 代码可直接复制运行，能1:1复现论文结果
+- 禁止使用 `...`、`pass`、`# 省略` 等占位符
+- 结尾添加：运行说明、环境配置、复现步骤、依赖库版本清单
+
+请直接输出附录markdown，从"# 附录 完整建模源代码与运行说明"开始。"""
+
+        yield {"type": "start", "content": "开始生成代码附录..."}
+
+        full_text = ""
+        try:
+            async for event in call_llm_api_stream(
+                messages=[{"role": "user", "content": user_prompt}],
+                system_prompt=system_prompt,
+                db=self.db,
+                user_id=self.user_id,
+                function_name="competition_appendix_generation",
+                max_tokens=32768,
+            ):
+                if event["type"] == "token":
+                    full_text += event["content"]
+                    yield {"type": "chunk", "content": event["content"]}
+                elif event["type"] == "done":
+                    full_text = event.get("content", full_text)
+                    break
+                elif event["type"] == "error":
+                    yield {"type": "error", "content": event.get("content", "LLM调用失败")}
+                    return
+        except Exception as e:
+            yield {"type": "error", "content": f"生成失败: {str(e)}"}
+            return
+
+        # 保存到 disk
+        if full_text and len(full_text) > 500:
+            appendix_path = root / "appendix_code.md"
+            appendix_path.write_text(full_text, encoding="utf-8")
+            lines = full_text.count('\n') + 1
+            word_count = len(full_text)
+            yield {"type": "done", "word_count": word_count, "lines": lines,
+                   "content": full_text}
+        else:
+            yield {"type": "error", "content": "生成的代码附录内容过短，请检查LLM配置或重试"}
 
     async def run_format_check(self, task_id: int) -> dict:
         """
